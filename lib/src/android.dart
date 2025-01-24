@@ -394,6 +394,36 @@ class AndroidAudioManager {
     return (await _channel.invokeMethod<bool>('isHapticPlaybackSupported'))!;
   }
 
+  ///register sco receiver
+  Future<void> registerScoReceiver() {
+    return _channel.invokeMethod('registerScoReceiver');
+  }
+
+  ///unregister sco receiver
+  Future<void> unregisterScoReceiver() {
+    return _channel.invokeMethod('unregisterScoReceiver');
+  }
+
+  ///register noisy receiver
+  Future<void> registerNoisyReceiver() {
+    return _channel.invokeMethod('registerNoisyReceiver');
+  }
+
+  ///unregister noisy receiver
+  Future<void> unregisterNoisyReceiver() {
+    return _channel.invokeMethod('unregisterNoisyReceiver');
+  }
+
+  ///set volume control stream by activity
+  Future<void> setVolumeControlStream(AndroidStreamType streamType) {
+    return _channel.invokeMethod('setVolumeControlStream', [streamType.index]);
+  }
+
+  ///get sdk version
+  Future<int> sdkVersion() async {
+    return (await _channel.invokeMethod('sdkVersion')) as int;
+  }
+
   void close() {
     _becomingNoisyEventSubject.close();
   }
@@ -665,6 +695,7 @@ class AndroidAudioAdjustment {
 
 class AndroidAudioVolumeFlags {
   static const AndroidAudioVolumeFlags showUi = AndroidAudioVolumeFlags(1 << 0);
+
   // TODO: Make this camelcase
   // ignore: constant_identifier_names
   static const AndroidAudioVolumeFlags allowRinger_modes =
@@ -679,6 +710,7 @@ class AndroidAudioVolumeFlags {
       AndroidAudioVolumeFlags(1 << 5);
   static const AndroidAudioVolumeFlags bluetoothAbsVolume =
       AndroidAudioVolumeFlags(1 << 6);
+
   // TODO: Make this camelcase
   // ignore: constant_identifier_names
   static const AndroidAudioVolumeFlags show_silent_hint =
@@ -750,6 +782,8 @@ enum AndroidAudioDeviceType {
 
   /// Android internal
   remoteSubmix,
+  bleHeadset,
+  bleSpeaker
 }
 
 class AndroidAudioCapturePolicy {

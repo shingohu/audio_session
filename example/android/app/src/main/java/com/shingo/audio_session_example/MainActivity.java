@@ -1,4 +1,4 @@
-package com.ryanheise.audio_session_example;
+package com.shingo.audio_session_example;
 
 import io.flutter.embedding.android.FlutterActivity;
 

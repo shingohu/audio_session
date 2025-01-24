@@ -1,5 +1,7 @@
 #import "./include/audio_session/DarwinAudioSession.h"
 #import <AVFoundation/AVFoundation.h>
+#import <CoreTelephony/CTCallCenter.h>
+#import <CoreTelephony/CTCall.h>
 
 static NSHashTable<DarwinAudioSession *> *sessions = nil;
 
@@ -96,6 +98,9 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
         [self setInputGain:args result:result];
     } else if ([@"isInputGainSettable" isEqualToString:call.method]) {
         [self getIsInputGainSettable:args result:result];
+    } else if([@"isTelephoneCalling" isEqualToString:call.method]){
+        BOOL yes = [self isTelephoneCalling];
+        result(@(yes));
     }
     else {
         result(FlutterMethodNotImplemented);
@@ -748,6 +753,18 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
     for (DarwinAudioSession *session in sessions) {
         [session.channel invokeMethod:method arguments:arguments];
     }
+}
+
+-(BOOL)isTelephoneCalling{
+    CTCallCenter* center = [[CTCallCenter alloc] init];
+    if(center.currentCalls != nil){
+        for (CTCall* call in center.currentCalls) {
+            if(call.callState != CTCallStateDisconnected){
+                return YES;
+            }
+        }
+    }
+    return NO;
 }
 
 - (void) dealloc {

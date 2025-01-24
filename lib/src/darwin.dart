@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:audio_session/src/util.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -22,7 +21,7 @@ class AVAudioSession {
   final _mediaServicesWereResetSubject = PublishSubject<void>();
 
   factory AVAudioSession() {
-    if (kIsWeb || !Platform.isIOS) {
+    if (!Platform.isIOS) {
       throw Exception('AVAudioSession is supported only on iOS');
     }
     return _instance ??= AVAudioSession._();
@@ -341,6 +340,11 @@ class AVAudioSession {
   //Future<bool> setAggregatedIoPreference(AVAudioSessionIOType type) async {
   //  return true;
   //}
+
+  ///is telephone calling
+  Future<bool> isTelephoneCalling() async {
+    return await _channel.invokeMethod<bool?>('isTelephoneCalling') ?? false;
+  }
 }
 
 /// The categories for [AVAudioSession].
@@ -503,6 +507,7 @@ class AVAudioSessionInterruptionOptions {
 
 class AVAudioSessionRouteChange {
   final AVAudioSessionRouteChangeReason reason;
+
   // add everything else later
   // AVAudioSessionRouteDescription? previousRoute;
   // NOTE: Maybe the Flutter side can just cache the previous
@@ -532,6 +537,7 @@ class AVAudioSessionRouteDescription {
   final Set<AVAudioSessionPortDescription> outputs;
 
   AVAudioSessionRouteDescription({required this.inputs, required this.outputs});
+
   static AVAudioSessionRouteDescription _fromMap(
           MethodChannel channel, Map<String, dynamic> map) =>
       AVAudioSessionRouteDescription(
@@ -556,6 +562,7 @@ class AVAudioSessionPortDescription {
   final bool hasHardwareVoiceCallProcessing;
   final List<AVAudioSessionDataSourceDescription>? dataSources;
   final AVAudioSessionDataSourceDescription? selectedDataSource;
+
   // ignore: prefer_final_fields
   AVAudioSessionDataSourceDescription? _preferredDataSource;
 
