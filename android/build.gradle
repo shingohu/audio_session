@@ -1,4 +1,4 @@
-group = "com.ryanheise.audio_session"
+group = "com.shingo.audio_session"
 version "1.0"
 def args = ["-Xlint:deprecation","-Xlint:unchecked"]
 
@@ -28,7 +28,7 @@ apply plugin: "com.android.library"
 
 android {
     if (project.android.hasProperty("namespace")) {
-        namespace = "com.ryanheise.audio_session"
+        namespace = "com.shingo.audio_session"
     }
 
     compileSdk = 34
