@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:audio_session/src/util.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
+
+import 'util.dart';
 
 /// If you test any feature listed as UNTESTED, consider sharing whether it
 /// works on GitHub.

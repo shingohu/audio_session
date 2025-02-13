@@ -3,8 +3,6 @@
 #import <CoreTelephony/CTCallCenter.h>
 #import <CoreTelephony/CTCall.h>
 
-static NSHashTable<DarwinAudioSession *> *sessions = nil;
-
 @implementation DarwinAudioSession {
     NSObject<FlutterPluginRegistrar>* _registrar;
     FlutterMethodChannel *_channel;
@@ -13,28 +11,23 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
 - (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
     self = [super init];
     NSAssert(self, @"super init cannot be nil");
-    BOOL firstInstance = !sessions;
-    if (firstInstance) {
-        sessions = [NSHashTable weakObjectsHashTable];
-    }
-    [sessions addObject:self];
     _registrar = registrar;
     _channel = [FlutterMethodChannel
-        methodChannelWithName:@"com.ryanheise.av_audio_session"
-              binaryMessenger:[registrar messenger]];
-    __weak __typeof__(self) weakSelf = self;
+                methodChannelWithName:@"com.ryanheise.av_audio_session"
+                binaryMessenger:[registrar messenger]];
+    __strong __typeof__(self) weakSelf = self;
     [_channel setMethodCallHandler:^(FlutterMethodCall* call, FlutterResult result) {
         [weakSelf handleMethodCall:call result:result];
     }];
-    if (firstInstance) {
-        //NSLog(@"adding notification observers");
-        [AVAudioSession sharedInstance];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioInterrupt:) name:AVAudioSessionInterruptionNotification object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(routeChange:) name:AVAudioSessionRouteChangeNotification object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(silenceSecondaryAudio:) name:AVAudioSessionSilenceSecondaryAudioHintNotification object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mediaServicesLost:) name:AVAudioSessionMediaServicesWereLostNotification object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mediaServicesReset:) name:AVAudioSessionMediaServicesWereResetNotification object:nil];
-    }
+    
+    //NSLog(@"adding notification observers");
+    [AVAudioSession sharedInstance];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioInterrupt:) name:AVAudioSessionInterruptionNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(routeChange:) name:AVAudioSessionRouteChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(silenceSecondaryAudio:) name:AVAudioSessionSilenceSecondaryAudioHintNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mediaServicesLost:) name:AVAudioSessionMediaServicesWereLostNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(mediaServicesReset:) name:AVAudioSessionMediaServicesWereResetNotification object:nil];
+    
     return self;
 }
 
@@ -216,7 +209,7 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
         NSError *error = nil;
         BOOL active = [args[0] boolValue];
         BOOL status;
-
+        
         @try {
             if (args[1] != (id)[NSNull null]) {
                 status = [[AVAudioSession sharedInstance] setActive:active withOptions:[args[1] integerValue] error:&error];
@@ -227,7 +220,7 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
             error = [NSError errorWithDomain:@"com.ryanheise.audioSession" code:500 userInfo:@{NSLocalizedDescriptionKey: exception.reason}];
             status = NO;
         }
-
+        
         // Once the operation is done, switch back to the main thread to send the result
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
@@ -431,8 +424,8 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
 - (NSNumber *)encodeLocation:(AVAudioSessionLocation)location {
     if (!location) return (id)[NSNull null];
     NSDictionary *map = @{
-      AVAudioSessionLocationLower: @(0),
-      AVAudioSessionLocationUpper: @(1),
+        AVAudioSessionLocationLower: @(0),
+        AVAudioSessionLocationUpper: @(1),
     };
     return map[location];
 }
@@ -441,30 +434,30 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
     if (!portType) return (id)[NSNull null];
     if (@available(iOS 14.0, *)) {
         NSDictionary *map = @{
-            AVAudioSessionPortAVB: @(11),      
-            AVAudioSessionPortDisplayPort: @(13),              
-            AVAudioSessionPortFireWire: @(15),           
-            AVAudioSessionPortPCI: @(16),      
-            AVAudioSessionPortThunderbolt: @(17),              
-            AVAudioSessionPortVirtual: @(19),          
+            AVAudioSessionPortAVB: @(11),
+            AVAudioSessionPortDisplayPort: @(13),
+            AVAudioSessionPortFireWire: @(15),
+            AVAudioSessionPortPCI: @(16),
+            AVAudioSessionPortThunderbolt: @(17),
+            AVAudioSessionPortVirtual: @(19),
         };
         if (map[portType]) return map[portType];
     }
     NSDictionary *map = @{
-        AVAudioSessionPortBuiltInMic: @(0),              
-        AVAudioSessionPortHeadsetMic: @(1),              
-        AVAudioSessionPortLineIn: @(2),          
-        AVAudioSessionPortAirPlay: @(3),           
-        AVAudioSessionPortBluetoothA2DP: @(4),                 
-        AVAudioSessionPortBluetoothLE: @(5),               
-        AVAudioSessionPortBuiltInReceiver: @(6),                   
-        AVAudioSessionPortBuiltInSpeaker: @(7),                  
-        AVAudioSessionPortHDMI: @(8),        
-        AVAudioSessionPortHeadphones: @(9),              
-        AVAudioSessionPortLineOut: @(10),          
-        AVAudioSessionPortBluetoothHFP: @(12),               
-        AVAudioSessionPortCarAudio: @(14),           
-        AVAudioSessionPortUSBAudio: @(18),           
+        AVAudioSessionPortBuiltInMic: @(0),
+        AVAudioSessionPortHeadsetMic: @(1),
+        AVAudioSessionPortLineIn: @(2),
+        AVAudioSessionPortAirPlay: @(3),
+        AVAudioSessionPortBluetoothA2DP: @(4),
+        AVAudioSessionPortBluetoothLE: @(5),
+        AVAudioSessionPortBuiltInReceiver: @(6),
+        AVAudioSessionPortBuiltInSpeaker: @(7),
+        AVAudioSessionPortHDMI: @(8),
+        AVAudioSessionPortHeadphones: @(9),
+        AVAudioSessionPortLineOut: @(10),
+        AVAudioSessionPortBluetoothHFP: @(12),
+        AVAudioSessionPortCarAudio: @(14),
+        AVAudioSessionPortUSBAudio: @(18),
     };
     return map[portType] ? map[portType] : (id)[NSNull null];
 }
@@ -692,14 +685,14 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
 
 - (void) sendError:(NSError *)error result:(FlutterResult)result {
     FlutterError *flutterError = [FlutterError errorWithCode:[NSString stringWithFormat:@"%d", (int)error.code]
-                                                        message:error.localizedDescription
-                                                        details:nil];
+                                                     message:error.localizedDescription
+                                                     details:nil];
     result(flutterError);
 }
 
 - (void) audioInterrupt:(NSNotification*)notification {
     NSNumber *interruptionType = (NSNumber*)[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey];
-
+    
     NSNumber *wasSuspended = nil;
     if (@available(iOS 10.3, *)) {
         wasSuspended = [notification.userInfo valueForKey:AVAudioSessionInterruptionWasSuspendedKey];
@@ -707,7 +700,7 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
     if (wasSuspended == nil) {
         wasSuspended = (id)[NSNull null];
     }
-
+    
     //NSLog(@"audioInterrupt");
     switch ([interruptionType integerValue]) {
         case AVAudioSessionInterruptionTypeBegan: {
@@ -750,9 +743,7 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
 }
 
 - (void) invokeMethod:(NSString *)method arguments:(id _Nullable)arguments {
-    for (DarwinAudioSession *session in sessions) {
-        [session.channel invokeMethod:method arguments:arguments];
-    }
+    [_channel invokeMethod:method arguments:arguments];
 }
 
 -(BOOL)isTelephoneCalling{
@@ -768,10 +759,7 @@ static NSHashTable<DarwinAudioSession *> *sessions = nil;
 }
 
 - (void) dealloc {
-    if (sessions.allObjects.count == 0) {
-        //NSLog(@"removing notification observers");
-        [[NSNotificationCenter defaultCenter] removeObserver:self];
-    }
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 @end

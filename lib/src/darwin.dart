@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:audio_session/src/util.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
+
+import 'util.dart';
 
 /// If you test any feature listed as UNTESTED, consider sharing whether it
 /// works on GitHub.
@@ -342,7 +343,7 @@ class AVAudioSession {
   //}
 
   ///is telephone calling
-  Future<bool> isTelephoneCalling() async {
+  Future<bool> get isTelephoneCalling async {
     return await _channel.invokeMethod<bool?>('isTelephoneCalling') ?? false;
   }
 }

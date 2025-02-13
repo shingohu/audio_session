@@ -1,10 +1,10 @@
-name: audio_session
+name: uu_audio_session
 description: Sets the iOS audio session category and Android audio attributes for your app, and manages your app's audio focus, mixing and ducking behaviour.
 version: 0.1.24
 homepage: https://github.com/shingohu/audio_session
 topics:
   - audio
-  - audio-session
+  - uu-audio-session
 
 environment:
   sdk: ^3.4.0
@@ -26,4 +26,4 @@ flutter:
         package: com.shingo.audio_session
         pluginClass: AudioSessionPlugin
       ios:
-        pluginClass: AudioSessionPlugin
+        pluginClass: UUAudioSessionPlugin

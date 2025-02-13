@@ -1,13 +1,13 @@
-#import "./include/audio_session/AudioSessionPlugin.h"
+#import "./include/audio_session/UUAudioSessionPlugin.h"
 #import "./include/audio_session/DarwinAudioSession.h"
 
 
-@implementation AudioSessionPlugin {
+@implementation UUAudioSessionPlugin {
     DarwinAudioSession *_darwinAudioSession;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
-    AudioSessionPlugin *plugin = [[AudioSessionPlugin alloc] initWithRegistrar:registrar];
+    [[UUAudioSessionPlugin alloc] initWithRegistrar:registrar];
 }
 
 - (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {

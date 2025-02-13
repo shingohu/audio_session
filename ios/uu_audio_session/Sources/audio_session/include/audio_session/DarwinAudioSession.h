@@ -10,4 +10,5 @@
 
 - (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar;
 
+- (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result ;
 @end

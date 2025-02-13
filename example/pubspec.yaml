@@ -12,7 +12,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  audio_session:
+  uu_audio_session:
     path: ../
 
 dev_dependencies:
@@ -21,7 +21,7 @@ dev_dependencies:
 dependency_overrides:
   # When running the local version of audio_session in the parent directory, we
   # need to override other plugins to also use this local version.
-  audio_session:
+  uu_audio_session:
     path: ..
 
 # For information on the generic Dart part of this file, see the

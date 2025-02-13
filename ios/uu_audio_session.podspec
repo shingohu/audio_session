@@ -3,7 +3,7 @@
 # Run `pod lib lint audio_session.podspec' to validate before publishing.
 #
 Pod::Spec.new do |s|
-  s.name             = 'audio_session'
+  s.name             = 'uu_audio_session'
   s.version          = '0.0.1'
   s.summary          = 'A new flutter plugin project.'
   s.description      = <<-DESC
@@ -13,8 +13,8 @@ A new flutter plugin project.
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Your Company' => 'email@example.com' }
   s.source           = { :path => '.' }
-  s.source_files     = 'audio_session/Sources/audio_session/**/*.{h,m}'
-  s.public_header_files = 'audio_session/Sources/audio_session/include/**/*.h'
+  s.source_files     = 'uu_audio_session/Sources/audio_session/**/*.{h,m}'
+  s.public_header_files = 'uu_audio_session/Sources/audio_session/include/**/*.h'
   s.dependency 'Flutter'
   s.platform = :ios, '12.0'
 
