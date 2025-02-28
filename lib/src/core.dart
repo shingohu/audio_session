@@ -24,9 +24,8 @@ class AudioSession {
     return _instance!;
   }
 
-  final _androidAudioManager =
-      Platform.isAndroid ? AndroidAudioManager() : null;
-  final _avAudioSession = Platform.isIOS ? AVAudioSession() : null;
+  final androidAudioManager = Platform.isAndroid ? AndroidAudioManager() : null;
+  final iOSAudioSession = Platform.isIOS ? AVAudioSession() : null;
   final _interruptionEventSubject = PublishSubject<AudioInterruptionEvent>();
   final _becomingNoisyEventSubject = PublishSubject<void>();
   final _devicesChangedEventSubject =
@@ -40,7 +39,7 @@ class AudioSession {
         _devicesSubject.add(await getDevices());
       },
     );
-    _avAudioSession?.interruptionNotificationStream.listen((notification) {
+    iOSAudioSession?.interruptionNotificationStream.listen((notification) {
       switch (notification.type) {
         case AVAudioSessionInterruptionType.began:
           if (notification.wasSuspended != true) {
@@ -58,7 +57,7 @@ class AudioSession {
           break;
       }
     });
-    _avAudioSession?.routeChangeStream
+    iOSAudioSession?.routeChangeStream
         .where((routeChange) =>
             routeChange.reason ==
                 AVAudioSessionRouteChangeReason.oldDeviceUnavailable ||
@@ -70,7 +69,7 @@ class AudioSession {
         // TODO: Check specifically if headphones were unplugged.
         _becomingNoisyEventSubject.add(null);
       }
-      final currentRoute = await _avAudioSession.currentRoute;
+      final currentRoute = await iOSAudioSession!.currentRoute;
       final previousRoute = _previousAVAudioSessionRoute ?? currentRoute;
       _previousAVAudioSessionRoute = currentRoute;
       final inputPortsAdded =
@@ -104,10 +103,10 @@ class AudioSession {
         _devicesSubject.add(await getDevices());
       }
     });
-    _androidAudioManager?.becomingNoisyEventStream
+    androidAudioManager?.becomingNoisyEventStream
         .listen((event) => _becomingNoisyEventSubject.add(null));
 
-    _androidAudioManager?.setAudioDevicesAddedListener((devices) async {
+    androidAudioManager?.setAudioDevicesAddedListener((devices) async {
       _devicesChangedEventSubject.add(AudioDevicesChangedEvent(
         devicesAdded: devices.map(_androidDevice2device).toSet(),
         devicesRemoved: {},
@@ -116,7 +115,7 @@ class AudioSession {
         _devicesSubject.add(await getDevices());
       }
     });
-    _androidAudioManager?.setAudioDevicesRemovedListener((devices) async {
+    androidAudioManager?.setAudioDevicesRemovedListener((devices) async {
       _devicesChangedEventSubject.add(AudioDevicesChangedEvent(
         devicesAdded: {},
         devicesRemoved: devices.map(_androidDevice2device).toSet(),
@@ -148,16 +147,16 @@ class AudioSession {
   Future<Set<AudioDevice>> getDevices(
       {bool includeInputs = true, bool includeOutputs = true}) async {
     final devices = <AudioDevice>{};
-    if (_androidAudioManager != null) {
+    if (androidAudioManager != null) {
       var flags = AndroidGetAudioDevicesFlags.none;
       if (includeInputs) flags |= AndroidGetAudioDevicesFlags.inputs;
       if (includeOutputs) flags |= AndroidGetAudioDevicesFlags.outputs;
-      final androidDevices = await _androidAudioManager.getDevices(flags);
+      final androidDevices = await androidAudioManager!.getDevices(flags);
       devices.addAll(androidDevices.map(_androidDevice2device).toSet());
-    } else if (_avAudioSession != null) {
-      final currentRoute = await _avAudioSession.currentRoute;
+    } else if (iOSAudioSession != null) {
+      final currentRoute = await iOSAudioSession!.currentRoute;
       if (includeInputs) {
-        final darwinInputs = await _avAudioSession.availableInputs;
+        final darwinInputs = await iOSAudioSession!.availableInputs;
         devices.addAll(darwinInputs
             .map((port) => _darwinPort2device(
                   port,

@@ -10,7 +10,7 @@ import 'util.dart';
 /// works on GitHub.
 class AVAudioSession {
   static const MethodChannel _channel =
-      MethodChannel('com.ryanheise.av_audio_session');
+      MethodChannel('com.shingo.av_audio_session');
   static AVAudioSession? _instance;
 
   final _interruptionNotificationSubject =

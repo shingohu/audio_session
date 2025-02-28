@@ -39,6 +39,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
     private static Singleton singleton;
@@ -48,237 +50,242 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
     BinaryMessenger messenger;
     MethodChannel channel;
 
+    ///所有操作异步队列执行
+    ExecutorService opService = Executors.newSingleThreadExecutor();
+
     public AndroidAudioManager(@NonNull Context applicationContext, @NonNull BinaryMessenger messenger) {
         if (singleton == null)
             singleton = new Singleton(applicationContext);
         this.messenger = messenger;
-        channel = new MethodChannel(messenger, "com.ryanheise.android_audio_manager");
+        channel = new MethodChannel(messenger, "com.shingo.android_audio_manager");
         singleton.add(this);
         channel.setMethodCallHandler(this);
     }
 
     @Override
     public void onMethodCall(@NonNull final MethodCall call, @NonNull final Result result) {
-        try {
-            List<?> args = (List<?>) call.arguments;
-            switch (call.method) {
-                case "requestAudioFocus": {
-                    result.success(singleton.requestAudioFocus(args));
-                    break;
-                }
-                case "abandonAudioFocus": {
-                    result.success(singleton.abandonAudioFocus());
-                    break;
-                }
-                case "dispatchMediaKeyEvent": {
-                    result.success(singleton.dispatchMediaKeyEvent((Map<?, ?>) args.get(0)));
-                    break;
-                }
-                case "isVolumeFixed": {
-                    result.success(singleton.isVolumeFixed());
-                    break;
-                }
-                case "adjustStreamVolume": {
-                    result.success(singleton.adjustStreamVolume((Integer) args.get(0), (Integer) args.get(1), (Integer) args.get(2)));
-                    break;
-                }
-                case "adjustVolume": {
-                    result.success(singleton.adjustVolume((Integer) args.get(0), (Integer) args.get(1)));
-                    break;
-                }
-                case "adjustSuggestedStreamVolume": {
-                    result.success(singleton.adjustSuggestedStreamVolume((Integer) args.get(0), (Integer) args.get(1), (Integer) args.get(2)));
-                    break;
-                }
-                case "getRingerMode": {
-                    result.success(singleton.getRingerMode());
-                    break;
-                }
-                case "getStreamMaxVolume": {
-                    result.success(singleton.getStreamMaxVolume((Integer) args.get(0)));
-                    break;
-                }
-                case "getStreamMinVolume": {
-                    result.success(singleton.getStreamMinVolume((Integer) args.get(0)));
-                    break;
-                }
-                case "getStreamVolume": {
-                    result.success(singleton.getStreamVolume((Integer) args.get(0)));
-                    break;
-                }
-                case "getStreamVolumeDb": {
-                    result.success(singleton.getStreamVolumeDb((Integer) args.get(0), (Integer) args.get(1), (Integer) args.get(2)));
-                    break;
-                }
-                case "setRingerMode": {
-                    result.success(singleton.setRingerMode((Integer) args.get(0)));
-                    break;
-                }
-                case "setStreamVolume": {
-                    result.success(singleton.setStreamVolume((Integer) args.get(0), (Integer) args.get(1), (Integer) args.get(2)));
-                    break;
-                }
-                case "isStreamMute": {
-                    result.success(singleton.isStreamMute((Integer) args.get(0)));
-                    break;
-                }
-                case "getAvailableCommunicationDevices": {
-                    result.success(singleton.getAvailableCommunicationDevices());
-                    break;
-                }
-                case "setCommunicationDevice": {
-                    result.success(singleton.setCommunicationDevice((Integer) args.get(0)));
-                    break;
-                }
-                case "getCommunicationDevice": {
-                    result.success(singleton.getCommunicationDevice());
-                    break;
-                }
-                case "clearCommunicationDevice": {
-                    result.success(singleton.clearCommunicationDevice());
-                    break;
-                }
-                case "setSpeakerphoneOn": {
-                    result.success(singleton.setSpeakerphoneOn((Boolean) args.get(0)));
-                    break;
-                }
-                case "isSpeakerphoneOn": {
-                    result.success(singleton.isSpeakerphoneOn());
-                    break;
-                }
-                case "setAllowedCapturePolicy": {
-                    result.success(singleton.setAllowedCapturePolicy((Integer) args.get(0)));
-                    break;
-                }
-                case "getAllowedCapturePolicy": {
-                    result.success(singleton.getAllowedCapturePolicy());
-                    break;
-                }
-                case "isBluetoothScoAvailableOffCall": {
-                    result.success(singleton.isBluetoothScoAvailableOffCall());
-                    break;
-                }
-                case "startBluetoothSco": {
-                    result.success(singleton.startBluetoothSco());
-                    break;
-                }
-                case "stopBluetoothSco": {
-                    result.success(singleton.stopBluetoothSco());
-                    break;
-                }
-                case "setBluetoothScoOn": {
-                    result.success(singleton.setBluetoothScoOn((Boolean) args.get(0)));
-                    break;
-                }
-                case "isBluetoothScoOn": {
-                    result.success(singleton.isBluetoothScoOn());
-                    break;
-                }
-                case "setMicrophoneMute": {
-                    result.success(singleton.setMicrophoneMute((Boolean) args.get(0)));
-                    break;
-                }
-                case "isMicrophoneMute": {
-                    result.success(singleton.isMicrophoneMute());
-                    break;
-                }
-                case "setMode": {
-                    result.success(singleton.setMode((Integer) args.get(0)));
-                    break;
-                }
-                case "getMode": {
-                    result.success(singleton.getMode());
-                    break;
-                }
-                case "isMusicActive": {
-                    result.success(singleton.isMusicActive());
-                    break;
-                }
-                case "generateAudioSessionId": {
-                    result.success(singleton.generateAudioSessionId());
-                    break;
-                }
-                case "setParameters": {
-                    result.success(singleton.setParameters((String) args.get(0)));
-                    break;
-                }
-                case "getParameters": {
-                    result.success(singleton.getParameters((String) args.get(0)));
-                    break;
-                }
-                case "playSoundEffect": {
-                    result.success(singleton.playSoundEffect((Integer) args.get(0), (Double) args.get(1)));
-                    break;
-                }
-                case "loadSoundEffects": {
-                    result.success(singleton.loadSoundEffects());
-                    break;
-                }
-                case "unloadSoundEffects": {
-                    result.success(singleton.unloadSoundEffects());
-                    break;
-                }
-                case "getProperty": {
-                    result.success(singleton.getProperty((String) args.get(0)));
-                    break;
-                }
-                case "getDevices": {
-                    result.success(singleton.getDevices((Integer) args.get(0)));
-                    break;
-                }
-                case "getMicrophones": {
-                    result.success(singleton.getMicrophones());
-                    break;
-                }
-                case "isHapticPlaybackSupported": {
-                    result.success(singleton.isHapticPlaybackSupported());
-                    break;
-                }
-                case "registerScoReceiver": {
-                    singleton.registerScoReceiver();
-                    result.success(null);
-                    break;
-                }
-                case "unregisterScoReceiver": {
-                    singleton.unregisterScoReceiver();
-                    result.success(null);
-                    break;
-                }
-                case "registerNoisyReceiver": {
-                    singleton.registerNoisyReceiver();
-                    result.success(null);
-                    break;
-                }
-                case "unregisterNoisyReceiver": {
-                    singleton.unregisterNoisyReceiver();
-                    result.success(null);
-                    break;
-                }
-                case "setVolumeControlStream": {
-                    if (mActivity != null) {
-                        mActivity.setVolumeControlStream((Integer) args.get(0));
+        opService.submit(() -> {
+            try {
+                List<?> args = (List<?>) call.arguments;
+                switch (call.method) {
+                    case "requestAudioFocus": {
+                        result.success(singleton.requestAudioFocus(args));
+                        break;
                     }
-                    result.success(null);
-                    break;
+                    case "abandonAudioFocus": {
+                        result.success(singleton.abandonAudioFocus());
+                        break;
+                    }
+                    case "dispatchMediaKeyEvent": {
+                        result.success(singleton.dispatchMediaKeyEvent((Map<?, ?>) args.get(0)));
+                        break;
+                    }
+                    case "isVolumeFixed": {
+                        result.success(singleton.isVolumeFixed());
+                        break;
+                    }
+                    case "adjustStreamVolume": {
+                        result.success(singleton.adjustStreamVolume((Integer) args.get(0), (Integer) args.get(1), (Integer) args.get(2)));
+                        break;
+                    }
+                    case "adjustVolume": {
+                        result.success(singleton.adjustVolume((Integer) args.get(0), (Integer) args.get(1)));
+                        break;
+                    }
+                    case "adjustSuggestedStreamVolume": {
+                        result.success(singleton.adjustSuggestedStreamVolume((Integer) args.get(0), (Integer) args.get(1), (Integer) args.get(2)));
+                        break;
+                    }
+                    case "getRingerMode": {
+                        result.success(singleton.getRingerMode());
+                        break;
+                    }
+                    case "getStreamMaxVolume": {
+                        result.success(singleton.getStreamMaxVolume((Integer) args.get(0)));
+                        break;
+                    }
+                    case "getStreamMinVolume": {
+                        result.success(singleton.getStreamMinVolume((Integer) args.get(0)));
+                        break;
+                    }
+                    case "getStreamVolume": {
+                        result.success(singleton.getStreamVolume((Integer) args.get(0)));
+                        break;
+                    }
+                    case "getStreamVolumeDb": {
+                        result.success(singleton.getStreamVolumeDb((Integer) args.get(0), (Integer) args.get(1), (Integer) args.get(2)));
+                        break;
+                    }
+                    case "setRingerMode": {
+                        result.success(singleton.setRingerMode((Integer) args.get(0)));
+                        break;
+                    }
+                    case "setStreamVolume": {
+                        result.success(singleton.setStreamVolume((Integer) args.get(0), (Integer) args.get(1), (Integer) args.get(2)));
+                        break;
+                    }
+                    case "isStreamMute": {
+                        result.success(singleton.isStreamMute((Integer) args.get(0)));
+                        break;
+                    }
+                    case "getAvailableCommunicationDevices": {
+                        result.success(singleton.getAvailableCommunicationDevices());
+                        break;
+                    }
+                    case "setCommunicationDevice": {
+                        result.success(singleton.setCommunicationDevice((Integer) args.get(0)));
+                        break;
+                    }
+                    case "getCommunicationDevice": {
+                        result.success(singleton.getCommunicationDevice());
+                        break;
+                    }
+                    case "clearCommunicationDevice": {
+                        result.success(singleton.clearCommunicationDevice());
+                        break;
+                    }
+                    case "setSpeakerphoneOn": {
+                        result.success(singleton.setSpeakerphoneOn((Boolean) args.get(0)));
+                        break;
+                    }
+                    case "isSpeakerphoneOn": {
+                        result.success(singleton.isSpeakerphoneOn());
+                        break;
+                    }
+                    case "setAllowedCapturePolicy": {
+                        result.success(singleton.setAllowedCapturePolicy((Integer) args.get(0)));
+                        break;
+                    }
+                    case "getAllowedCapturePolicy": {
+                        result.success(singleton.getAllowedCapturePolicy());
+                        break;
+                    }
+                    case "isBluetoothScoAvailableOffCall": {
+                        result.success(singleton.isBluetoothScoAvailableOffCall());
+                        break;
+                    }
+                    case "startBluetoothSco": {
+                        result.success(singleton.startBluetoothSco());
+                        break;
+                    }
+                    case "stopBluetoothSco": {
+                        result.success(singleton.stopBluetoothSco());
+                        break;
+                    }
+                    case "setBluetoothScoOn": {
+                        result.success(singleton.setBluetoothScoOn((Boolean) args.get(0)));
+                        break;
+                    }
+                    case "isBluetoothScoOn": {
+                        result.success(singleton.isBluetoothScoOn());
+                        break;
+                    }
+                    case "setMicrophoneMute": {
+                        result.success(singleton.setMicrophoneMute((Boolean) args.get(0)));
+                        break;
+                    }
+                    case "isMicrophoneMute": {
+                        result.success(singleton.isMicrophoneMute());
+                        break;
+                    }
+                    case "setMode": {
+                        result.success(singleton.setMode((Integer) args.get(0)));
+                        break;
+                    }
+                    case "getMode": {
+                        result.success(singleton.getMode());
+                        break;
+                    }
+                    case "isMusicActive": {
+                        result.success(singleton.isMusicActive());
+                        break;
+                    }
+                    case "generateAudioSessionId": {
+                        result.success(singleton.generateAudioSessionId());
+                        break;
+                    }
+                    case "setParameters": {
+                        result.success(singleton.setParameters((String) args.get(0)));
+                        break;
+                    }
+                    case "getParameters": {
+                        result.success(singleton.getParameters((String) args.get(0)));
+                        break;
+                    }
+                    case "playSoundEffect": {
+                        result.success(singleton.playSoundEffect((Integer) args.get(0), (Double) args.get(1)));
+                        break;
+                    }
+                    case "loadSoundEffects": {
+                        result.success(singleton.loadSoundEffects());
+                        break;
+                    }
+                    case "unloadSoundEffects": {
+                        result.success(singleton.unloadSoundEffects());
+                        break;
+                    }
+                    case "getProperty": {
+                        result.success(singleton.getProperty((String) args.get(0)));
+                        break;
+                    }
+                    case "getDevices": {
+                        result.success(singleton.getDevices((Integer) args.get(0)));
+                        break;
+                    }
+                    case "getMicrophones": {
+                        result.success(singleton.getMicrophones());
+                        break;
+                    }
+                    case "isHapticPlaybackSupported": {
+                        result.success(singleton.isHapticPlaybackSupported());
+                        break;
+                    }
+                    case "registerScoReceiver": {
+                        singleton.registerScoReceiver();
+                        result.success(null);
+                        break;
+                    }
+                    case "unregisterScoReceiver": {
+                        singleton.unregisterScoReceiver();
+                        result.success(null);
+                        break;
+                    }
+                    case "registerNoisyReceiver": {
+                        singleton.registerNoisyReceiver();
+                        result.success(null);
+                        break;
+                    }
+                    case "unregisterNoisyReceiver": {
+                        singleton.unregisterNoisyReceiver();
+                        result.success(null);
+                        break;
+                    }
+                    case "setVolumeControlStream": {
+                        if (mActivity != null) {
+                            mActivity.setVolumeControlStream((Integer) args.get(0));
+                        }
+                        result.success(null);
+                        break;
+                    }
+                    case "sdkVersion":
+                        result.success(Build.VERSION.SDK_INT);
+                        break;
+                    case "isLeAudioSupported": {
+                        result.success(singleton.isLeAudioSupported());
+                    }
+                    case "isLeAudioBroadcastSourceSupported": {
+                        result.success(singleton.isLeAudioBroadcastSourceSupported());
+                    }
+                    default: {
+                        result.notImplemented();
+                        break;
+                    }
                 }
-                case "sdkVersion":
-                    result.success(Build.VERSION.SDK_INT);
-                    break;
-                case "isLeAudioSupported": {
-                    result.success(singleton.isLeAudioSupported());
-                }
-                case "isLeAudioBroadcastSourceSupported": {
-                    result.success(singleton.isLeAudioBroadcastSourceSupported());
-                }
-                default: {
-                    result.notImplemented();
-                    break;
-                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                result.error("Error: " + e, null, null);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            result.error("Error: " + e, null, null);
-        }
+        });
     }
 
 

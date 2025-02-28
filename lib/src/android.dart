@@ -9,7 +9,7 @@ import 'util.dart';
 /// works on GitHub.
 class AndroidAudioManager {
   static const MethodChannel _channel =
-      MethodChannel('com.ryanheise.android_audio_manager');
+      MethodChannel('com.shingo.android_audio_manager');
   static AndroidAudioManager? _instance;
 
   final _scoAudioUpdatedEventSubject = BehaviorSubject<AndroidScoAudioEvent>();
@@ -17,6 +17,7 @@ class AndroidAudioManager {
   AndroidOnAudioFocusChanged? _onAudioFocusChanged;
   AndroidOnAudioDevicesChanged? _onAudioDevicesAdded;
   AndroidOnAudioDevicesChanged? _onAudioDevicesRemoved;
+  int sdkInt = -1;
 
   factory AndroidAudioManager() {
     return _instance ??= AndroidAudioManager._();
@@ -60,6 +61,9 @@ class AndroidAudioManager {
           _scoAudioUpdatedEventSubject.add(_decodeScoAudioEvent(args));
           break;
       }
+    });
+    sdkVersion().then((result) {
+      sdkInt = result;
     });
   }
 

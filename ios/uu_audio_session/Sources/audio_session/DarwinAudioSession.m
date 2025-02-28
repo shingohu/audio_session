@@ -6,21 +6,21 @@
 @implementation DarwinAudioSession {
     NSObject<FlutterPluginRegistrar>* _registrar;
     FlutterMethodChannel *_channel;
+    dispatch_queue_t _opDispatchQueue;
 }
 
 - (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
     self = [super init];
-    NSAssert(self, @"super init cannot be nil");
     _registrar = registrar;
     _channel = [FlutterMethodChannel
-                methodChannelWithName:@"com.ryanheise.av_audio_session"
+                methodChannelWithName:@"com.shingo.av_audio_session"
                 binaryMessenger:[registrar messenger]];
+    _opDispatchQueue = dispatch_queue_create("av_audio_session_op", DISPATCH_QUEUE_SERIAL);
     __strong __typeof__(self) weakSelf = self;
     [_channel setMethodCallHandler:^(FlutterMethodCall* call, FlutterResult result) {
         [weakSelf handleMethodCall:call result:result];
     }];
     
-    //NSLog(@"adding notification observers");
     [AVAudioSession sharedInstance];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(audioInterrupt:) name:AVAudioSessionInterruptionNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(routeChange:) name:AVAudioSessionRouteChangeNotification object:nil];
@@ -36,68 +36,68 @@
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
-    NSArray* args = (NSArray*)call.arguments;
-    if ([@"getCategory" isEqualToString:call.method]) {
-        [self getCategory:args result:result];
-    } else if ([@"setCategory" isEqualToString:call.method]) {
-        [self setCategory:args result:result];
-    } else if ([@"getAvailableCategories" isEqualToString:call.method]) {
-        [self getAvailableCategories:args result:result];
-    } else if ([@"getCategoryOptions" isEqualToString:call.method]) {
-        [self getCategoryOptions:args result:result];
-    } else if ([@"getMode" isEqualToString:call.method]) {
-        [self getMode:args result:result];
-    } else if ([@"setMode" isEqualToString:call.method]) {
-        [self setMode:args result:result];
-    } else if ([@"getAvailableModes" isEqualToString:call.method]) {
-        [self getAvailableModes:args result:result];
-    } else if ([@"getRouteSharingPolicy" isEqualToString:call.method]) {
-        [self getRouteSharingPolicy:args result:result];
-    } else if ([@"setActive" isEqualToString:call.method]) {
-        [self setActive:args result:result];
-    } else if ([@"getRecordPermission" isEqualToString:call.method]) {
-        [self getRecordPermission:args result:result];
-    } else if ([@"requestRecordPermission" isEqualToString:call.method]) {
-        [self requestRecordPermission:args result:result];
-    } else if ([@"isOtherAudioPlaying" isEqualToString:call.method]) {
-        [self isOtherAudioPlaying:args result:result];
-    } else if ([@"getSecondaryAudioShouldBeSilencedHint" isEqualToString:call.method]) {
-        [self getSecondaryAudioShouldBeSilencedHint:args result:result];
-    } else if ([@"getAllowHapticsAndSystemSoundsDuringRecording" isEqualToString:call.method]) {
-        [self getAllowHapticsAndSystemSoundsDuringRecording:args result:result];
-    } else if ([@"setAllowHapticsAndSystemSoundsDuringRecording" isEqualToString:call.method]) {
-        [self setAllowHapticsAndSystemSoundsDuringRecording:args result:result];
-    } else if ([@"getPrefersNoInterruptionsFromSystemAlerts" isEqualToString:call.method]) { // NEW
-        [self getPrefersNoInterruptionsFromSystemAlerts:args result:result]; // NEW
-    } else if ([@"setPrefersNoInterruptionsFromSystemAlerts" isEqualToString:call.method]) { // NEW
-        [self setPrefersNoInterruptionsFromSystemAlerts:args result:result]; /// NEW
-    } else if ([@"getPromptStyle" isEqualToString:call.method]) {
-        [self getPromptStyle:args result:result];
-    } else if ([@"overrideOutputAudioPort" isEqualToString:call.method]) {
-        [self overrideOutputAudioPort:args result:result];
-    } else if ([@"setPreferredInput" isEqualToString:call.method]) {
-        [self setPreferredInput:args result:result];
-    } else if ([@"getCurrentRoute" isEqualToString:call.method]) {
-        [self getCurrentRoute:args result:result];
-    } else if ([@"getAvailableInputs" isEqualToString:call.method]) {
-        [self getAvailableInputs:args result:result];
-    } else if ([@"getInputLatency" isEqualToString:call.method]) {
-        [self getInputLatency:args result:result];
-    } else if ([@"getOutputLatency" isEqualToString:call.method]) {
-        [self getOutputLatency:args result:result];
-    } else if ([@"getInputGain" isEqualToString:call.method]) {
-        [self getInputGain:args result:result];
-    } else if ([@"setInputGain" isEqualToString:call.method]) {
-        [self setInputGain:args result:result];
-    } else if ([@"isInputGainSettable" isEqualToString:call.method]) {
-        [self getIsInputGainSettable:args result:result];
-    } else if([@"isTelephoneCalling" isEqualToString:call.method]){
+    dispatch_async(_opDispatchQueue, ^{
+        NSArray* args = (NSArray*)call.arguments;
+        if ([@"getCategory" isEqualToString:call.method]) {
+            [self getCategory:args result:result];
+        } else if ([@"setCategory" isEqualToString:call.method]) {
+            [self setCategory:args result:result];
+        } else if ([@"getAvailableCategories" isEqualToString:call.method]) {
+            [self getAvailableCategories:args result:result];
+        } else if ([@"getCategoryOptions" isEqualToString:call.method]) {
+            [self getCategoryOptions:args result:result];
+        } else if ([@"getMode" isEqualToString:call.method]) {
+            [self getMode:args result:result];
+        } else if ([@"setMode" isEqualToString:call.method]) {
+            [self setMode:args result:result];
+        } else if ([@"getAvailableModes" isEqualToString:call.method]) {
+            [self getAvailableModes:args result:result];
+        } else if ([@"getRouteSharingPolicy" isEqualToString:call.method]) {
+            [self getRouteSharingPolicy:args result:result];
+        } else if ([@"setActive" isEqualToString:call.method]) {
+            [self setActive:args result:result];
+        } else if ([@"getRecordPermission" isEqualToString:call.method]) {
+            [self getRecordPermission:args result:result];
+        } else if ([@"requestRecordPermission" isEqualToString:call.method]) {
+            [self requestRecordPermission:args result:result];
+        } else if ([@"isOtherAudioPlaying" isEqualToString:call.method]) {
+            [self isOtherAudioPlaying:args result:result];
+        } else if ([@"getSecondaryAudioShouldBeSilencedHint" isEqualToString:call.method]) {
+            [self getSecondaryAudioShouldBeSilencedHint:args result:result];
+        } else if ([@"getAllowHapticsAndSystemSoundsDuringRecording" isEqualToString:call.method]) {
+            [self getAllowHapticsAndSystemSoundsDuringRecording:args result:result];
+        } else if ([@"setAllowHapticsAndSystemSoundsDuringRecording" isEqualToString:call.method]) {
+            [self setAllowHapticsAndSystemSoundsDuringRecording:args result:result];
+        } else if ([@"getPrefersNoInterruptionsFromSystemAlerts" isEqualToString:call.method]) { // NEW
+            [self getPrefersNoInterruptionsFromSystemAlerts:args result:result]; // NEW
+        } else if ([@"setPrefersNoInterruptionsFromSystemAlerts" isEqualToString:call.method]) { // NEW
+            [self setPrefersNoInterruptionsFromSystemAlerts:args result:result]; /// NEW
+        } else if ([@"getPromptStyle" isEqualToString:call.method]) {
+            [self getPromptStyle:args result:result];
+        } else if ([@"overrideOutputAudioPort" isEqualToString:call.method]) {
+            [self overrideOutputAudioPort:args result:result];
+        } else if ([@"setPreferredInput" isEqualToString:call.method]) {
+            [self setPreferredInput:args result:result];
+        } else if ([@"getCurrentRoute" isEqualToString:call.method]) {
+            [self getCurrentRoute:args result:result];
+        } else if ([@"getAvailableInputs" isEqualToString:call.method]) {
+            [self getAvailableInputs:args result:result];
+        } else if ([@"getInputLatency" isEqualToString:call.method]) {
+            [self getInputLatency:args result:result];
+        } else if ([@"getOutputLatency" isEqualToString:call.method]) {
+            [self getOutputLatency:args result:result];
+        } else if ([@"getInputGain" isEqualToString:call.method]) {
+            [self getInputGain:args result:result];
+        } else if ([@"setInputGain" isEqualToString:call.method]) {
+            [self setInputGain:args result:result];
+        } else if ([@"isInputGainSettable" isEqualToString:call.method]) {
+            [self getIsInputGainSettable:args result:result];
+        }
+    });
+   if([@"isTelephoneCalling" isEqualToString:call.method]){
         BOOL yes = [self isTelephoneCalling];
         result(@(yes));
-    }
-    else {
-        result(FlutterMethodNotImplemented);
-    }
+   }
 }
 
 - (void)getCategory:(NSArray *)args result:(FlutterResult)result {
@@ -217,7 +217,7 @@
                 status = [[AVAudioSession sharedInstance] setActive:active error:&error];
             }
         } @catch (NSException *exception) {
-            error = [NSError errorWithDomain:@"com.ryanheise.audioSession" code:500 userInfo:@{NSLocalizedDescriptionKey: exception.reason}];
+            error = [NSError errorWithDomain:@"com.shingo.audioSession" code:500 userInfo:@{NSLocalizedDescriptionKey: exception.reason}];
             status = NO;
         }
         
