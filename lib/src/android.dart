@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:rxdart/rxdart.dart';
 
 import 'util.dart';
 
@@ -12,8 +11,9 @@ class AndroidAudioManager {
       MethodChannel('com.shingo.android_audio_manager');
   static AndroidAudioManager? _instance;
 
-  final _scoAudioUpdatedEventSubject = BehaviorSubject<AndroidScoAudioEvent>();
-  final _becomingNoisyEventSubject = PublishSubject<void>();
+  final _scoAudioUpdatedEventSubject =
+      StreamController<AndroidScoAudioEvent>.broadcast();
+  final _becomingNoisyEventSubject = StreamController<void>.broadcast();
   AndroidOnAudioFocusChanged? _onAudioFocusChanged;
   AndroidOnAudioDevicesChanged? _onAudioDevicesAdded;
   AndroidOnAudioDevicesChanged? _onAudioDevicesRemoved;
@@ -58,7 +58,8 @@ class AndroidAudioManager {
           }
           break;
         case 'onScoAudioStateUpdated':
-          _scoAudioUpdatedEventSubject.add(_decodeScoAudioEvent(args));
+          _androidScoAudioEvent = _decodeScoAudioEvent(args);
+          _scoAudioUpdatedEventSubject.add(_androidScoAudioEvent!);
           break;
       }
     });
@@ -73,8 +74,10 @@ class AndroidAudioManager {
   Stream<AndroidScoAudioEvent> get scoAudioEventStream =>
       _scoAudioUpdatedEventSubject.stream;
 
+  AndroidScoAudioEvent? _androidScoAudioEvent = null;
+
   AndroidScoAudioState? get currentScoAudioState =>
-      _scoAudioUpdatedEventSubject.nvalue?.currentState;
+      _androidScoAudioEvent?.currentState;
 
   Future<bool> requestAudioFocus(AndroidAudioFocusRequest focusRequest) async {
     _onAudioFocusChanged = focusRequest.onAudioFocusChanged;
@@ -1057,10 +1060,4 @@ class AndroidScoAudioEvent {
   String toString() {
     return 'AndroidScoAudioEvent{currentState: $currentState, previousState: $previousState}';
   }
-}
-
-/// Backwards compatible extensions on rxdart's ValueStream
-extension _ValueStreamExtension<T> on ValueStream<T> {
-  /// Backwards compatible version of valueOrNull.
-  T? get nvalue => hasValue ? value : null;
 }

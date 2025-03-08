@@ -36,6 +36,11 @@
 }
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
+    if([@"isTelephoneCalling" isEqualToString:call.method]){
+        BOOL yes = [self isTelephoneCalling];
+        result(@(yes));
+        return;
+    }
     dispatch_async(_opDispatchQueue, ^{
         NSArray* args = (NSArray*)call.arguments;
         if ([@"getCategory" isEqualToString:call.method]) {
@@ -94,10 +99,6 @@
             [self getIsInputGainSettable:args result:result];
         }
     });
-   if([@"isTelephoneCalling" isEqualToString:call.method]){
-        BOOL yes = [self isTelephoneCalling];
-        result(@(yes));
-   }
 }
 
 - (void)getCategory:(NSArray *)args result:(FlutterResult)result {

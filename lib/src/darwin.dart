@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:rxdart/rxdart.dart';
 
 import 'util.dart';
 
@@ -14,12 +13,13 @@ class AVAudioSession {
   static AVAudioSession? _instance;
 
   final _interruptionNotificationSubject =
-      PublishSubject<AVAudioSessionInterruptionNotification>();
-  final _routeChangeSubject = PublishSubject<AVAudioSessionRouteChange>();
+      StreamController<AVAudioSessionInterruptionNotification>.broadcast();
+  final _routeChangeSubject =
+      StreamController<AVAudioSessionRouteChange>.broadcast();
   final _silenceSecondaryAudioHintSubject =
-      PublishSubject<AVAudioSessionSilenceSecondaryAudioHintType>();
-  final _mediaServicesWereLostSubject = PublishSubject<void>();
-  final _mediaServicesWereResetSubject = PublishSubject<void>();
+      StreamController<AVAudioSessionSilenceSecondaryAudioHintType>.broadcast();
+  final _mediaServicesWereLostSubject = StreamController<void>.broadcast();
+  final _mediaServicesWereResetSubject = StreamController<void>.broadcast();
 
   factory AVAudioSession() {
     if (!Platform.isIOS) {

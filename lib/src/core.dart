@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:meta/meta.dart' show experimental;
-import 'package:rxdart/rxdart.dart';
 
 import 'android.dart';
 import 'darwin.dart';
@@ -24,22 +23,62 @@ class AudioSession {
     return _instance!;
   }
 
-  final androidAudioManager = Platform.isAndroid ? AndroidAudioManager() : null;
-  final iOSAudioSession = Platform.isIOS ? AVAudioSession() : null;
-  final _interruptionEventSubject = PublishSubject<AudioInterruptionEvent>();
-  final _becomingNoisyEventSubject = PublishSubject<void>();
-  final _devicesChangedEventSubject =
-      PublishSubject<AudioDevicesChangedEvent>();
-  late final BehaviorSubject<Set<AudioDevice>> _devicesSubject;
+  ///android default audio focus request gain type
+  late AndroidAudioFocusGainType _defaultAndroidFocusGainType =
+      AndroidAudioFocusGainType.gainTransient;
+
+  ///ios default audio session de active options
+  late AVAudioSessionSetActiveOptions _defaultAVAudioSessionSetActiveOptions =
+      AVAudioSessionSetActiveOptions.notifyOthersOnDeactivation;
+
+  final audioManager = Platform.isAndroid ? AndroidAudioManager() : null;
+  final avAudioSession = Platform.isIOS ? AVAudioSession() : null;
+
+  final StreamController<AudioInterruptionEvent> _interruptionEventSubject =
+      StreamController.broadcast();
+  final StreamController<void> _becomingNoisyEventSubject =
+      StreamController.broadcast();
+  final StreamController<AudioDevicesChangedEvent> _devicesChangedEventSubject =
+      StreamController.broadcast();
+  final StreamController<List<AudioDevice>> _devicesSubject =
+      StreamController.broadcast();
+
   AVAudioSessionRouteDescription? _previousAVAudioSessionRoute;
 
+  ///全部音频设备
+  List<AudioDevice> _audioDevices = [];
+
+  ///获取全部音频设备
+  List<AudioDevice> get audioDevices => _audioDevices.toList();
+
+  ///输出音频设备(iOS上与category有关,并且会随着category的改变而改变)
+  ///android上会把所有的可以输出音频的路由都返回
+  List<AudioDevice> get outputDevices =>
+      _audioDevices.where((element) => element.isOutput).toList();
+
+  ///输入音频设备
+  List<AudioDevice> get inputDevices =>
+      _audioDevices.where((element) => element.isInput).toList();
+
+  ///是否连接有蓝牙设备
+  bool get isBluetoothPlugged {
+    return _audioDevices.any((device) {
+      return device.type == AudioDeviceType.bluetoothA2dp ||
+          device.type == AudioDeviceType.bluetoothLe ||
+          device.type == AudioDeviceType.bluetoothSco;
+    });
+  }
+
+  ///是否连接有有线耳机(优先级最高)
+  bool get isWirelessHeadsetPlugged {
+    return _audioDevices.any((device) {
+      return device.type == AudioDeviceType.wiredHeadset ||
+          device.type == AudioDeviceType.wiredHeadphones;
+    });
+  }
+
   AudioSession._() {
-    _devicesSubject = BehaviorSubject<Set<AudioDevice>>(
-      onListen: () async {
-        _devicesSubject.add(await getDevices());
-      },
-    );
-    iOSAudioSession?.interruptionNotificationStream.listen((notification) {
+    avAudioSession?.interruptionNotificationStream.listen((notification) {
       switch (notification.type) {
         case AVAudioSessionInterruptionType.began:
           if (notification.wasSuspended != true) {
@@ -57,7 +96,7 @@ class AudioSession {
           break;
       }
     });
-    iOSAudioSession?.routeChangeStream
+    avAudioSession?.routeChangeStream
         .where((routeChange) =>
             routeChange.reason ==
                 AVAudioSessionRouteChangeReason.oldDeviceUnavailable ||
@@ -69,7 +108,7 @@ class AudioSession {
         // TODO: Check specifically if headphones were unplugged.
         _becomingNoisyEventSubject.add(null);
       }
-      final currentRoute = await iOSAudioSession!.currentRoute;
+      final currentRoute = await avAudioSession!.currentRoute;
       final previousRoute = _previousAVAudioSessionRoute ?? currentRoute;
       _previousAVAudioSessionRoute = currentRoute;
       final inputPortsAdded =
@@ -99,31 +138,26 @@ class AudioSession {
         devicesRemoved: devicesRemoved,
       ));
 
-      if (_devicesSubject.hasListener) {
-        _devicesSubject.add(await getDevices());
-      }
+      _refreshAllDevices();
     });
-    androidAudioManager?.becomingNoisyEventStream
+    audioManager?.becomingNoisyEventStream
         .listen((event) => _becomingNoisyEventSubject.add(null));
 
-    androidAudioManager?.setAudioDevicesAddedListener((devices) async {
+    audioManager?.setAudioDevicesAddedListener((devices) async {
       _devicesChangedEventSubject.add(AudioDevicesChangedEvent(
         devicesAdded: devices.map(_androidDevice2device).toSet(),
         devicesRemoved: {},
       ));
-      if (_devicesSubject.hasListener) {
-        _devicesSubject.add(await getDevices());
-      }
+      _refreshAllDevices();
     });
-    androidAudioManager?.setAudioDevicesRemovedListener((devices) async {
+    audioManager?.setAudioDevicesRemovedListener((devices) async {
       _devicesChangedEventSubject.add(AudioDevicesChangedEvent(
         devicesAdded: {},
         devicesRemoved: devices.map(_androidDevice2device).toSet(),
       ));
-      if (_devicesSubject.hasListener) {
-        _devicesSubject.add(await getDevices());
-      }
+      _refreshAllDevices();
     });
+    _refreshAllDevices();
   }
 
   /// A stream of [AudioInterruptionEvent]s.
@@ -141,22 +175,22 @@ class AudioSession {
       _devicesChangedEventSubject.stream;
 
   /// A stream emitting the set of connected devices whenever there is a change.
-  Stream<Set<AudioDevice>> get devicesStream => _devicesSubject.stream;
+  Stream<List<AudioDevice>> get devicesStream => _devicesSubject.stream;
 
   /// Completes with a list of available audio devices.
-  Future<Set<AudioDevice>> getDevices(
+  Future<List<AudioDevice>> getDevices(
       {bool includeInputs = true, bool includeOutputs = true}) async {
     final devices = <AudioDevice>{};
-    if (androidAudioManager != null) {
+    if (audioManager != null) {
       var flags = AndroidGetAudioDevicesFlags.none;
       if (includeInputs) flags |= AndroidGetAudioDevicesFlags.inputs;
       if (includeOutputs) flags |= AndroidGetAudioDevicesFlags.outputs;
-      final androidDevices = await androidAudioManager!.getDevices(flags);
+      final androidDevices = await audioManager!.getDevices(flags);
       devices.addAll(androidDevices.map(_androidDevice2device).toSet());
-    } else if (iOSAudioSession != null) {
-      final currentRoute = await iOSAudioSession!.currentRoute;
+    } else if (avAudioSession != null) {
+      final currentRoute = await avAudioSession!.currentRoute;
       if (includeInputs) {
-        final darwinInputs = await iOSAudioSession!.availableInputs;
+        final darwinInputs = await avAudioSession!.availableInputs;
         devices.addAll(darwinInputs
             .map((port) => _darwinPort2device(
                   port,
@@ -178,7 +212,154 @@ class AudioSession {
             )));
       }
     }
-    return devices;
+    if (includeInputs && includeOutputs) {
+      _checkDifferentDevices(devices.toList());
+    }
+    return devices.toList();
+  }
+
+  _Debouncer _debouncer = _Debouncer(delay: const Duration(milliseconds: 100));
+
+  ///获取全部的音频设备
+  void _refreshAllDevices() async {
+    _debouncer.run(() async {
+      List<AudioDevice> devices = (await getDevices());
+      _checkDifferentDevices(devices);
+    });
+  }
+
+  ///判断与已经缓存的是否一致
+  void _checkDifferentDevices(List<AudioDevice> devices) async {
+    bool different = false;
+    if (devices.length == _audioDevices.length) {
+      for (int i = 0; i < devices.length; i++) {
+        if (devices.elementAt(i) != _audioDevices.elementAt(i)) {
+          different = true;
+          break;
+        }
+      }
+    } else {
+      different = true;
+    }
+    if (different) {
+      _audioDevices = devices;
+      _devicesSubject.add(_audioDevices);
+    }
+  }
+
+  ///请求或者释放音频焦点
+  Future<bool> setActive(bool active,
+      {AndroidAudioFocusGainType? androidAudioFocusGainType,
+      AndroidAudioAttributes? androidAudioAttributes,
+      bool? androidWillPauseWhenDucked,
+      AVAudioSessionSetActiveOptions? avOptions}) async {
+    if (Platform.isAndroid) {
+      if (!active) {
+        return await audioManager!.abandonAudioFocus();
+      } else {
+        final pauseWhenDucked = androidWillPauseWhenDucked ?? false;
+        var ducked = false;
+        return await audioManager!.requestAudioFocus(
+            new AndroidAudioFocusRequest(
+                gainType:
+                    androidAudioFocusGainType ?? _defaultAndroidFocusGainType,
+                audioAttributes: androidAudioAttributes,
+                willPauseWhenDucked: pauseWhenDucked,
+                onAudioFocusChanged: (focus) {
+                  switch (focus) {
+                    case AndroidAudioFocus.gain:
+                      _interruptionEventSubject.add(AudioInterruptionEvent(
+                          false,
+                          ducked
+                              ? AudioInterruptionType.duck
+                              : AudioInterruptionType.pause));
+                      ducked = false;
+                      break;
+                    case AndroidAudioFocus.loss:
+                      _interruptionEventSubject.add(AudioInterruptionEvent(
+                          true, AudioInterruptionType.unknown));
+                      ducked = false;
+                      break;
+                    case AndroidAudioFocus.lossTransient:
+                      _interruptionEventSubject.add(AudioInterruptionEvent(
+                          true, AudioInterruptionType.pause));
+                      ducked = false;
+                      break;
+                    case AndroidAudioFocus.lossTransientCanDuck:
+                      // We enforce the "will pause when ducked" configuration by
+                      // sending the app a pause event instead of a duck event.
+                      _interruptionEventSubject.add(AudioInterruptionEvent(
+                          true,
+                          pauseWhenDucked
+                              ? AudioInterruptionType.pause
+                              : AudioInterruptionType.duck));
+                      if (!pauseWhenDucked) ducked = true;
+                      break;
+                  }
+                }));
+      }
+    } else if (Platform.isIOS) {
+      if (active) {
+        return await avAudioSession!.setActive(active).catchError((error) {
+          print(error);
+          return false;
+        });
+      } else {
+        return await avAudioSession!
+            .setActive(active,
+                avOptions: avOptions ?? _defaultAVAudioSessionSetActiveOptions)
+            .catchError((error) {
+          print(error);
+          return false;
+        });
+      }
+    }
+    return true;
+  }
+
+  ///是否正在通话中
+  Future<bool> isInCall() async {
+    if (Platform.isAndroid) {
+      return (await audioManager!.getMode()) == AndroidAudioHardwareMode.inCall;
+    } else if (Platform.isIOS) {
+      return await avAudioSession!.isTelephoneCalling;
+    }
+    return false;
+  }
+
+  ///set ios audio session category
+  Future<void> setCategory(AVAudioSessionCategory? category,
+      {AVAudioSessionCategoryOptions? options,
+      AVAudioSessionMode mode = AVAudioSessionMode.defaultMode,
+      AVAudioSessionRouteSharingPolicy policy =
+          AVAudioSessionRouteSharingPolicy.defaultPolicy}) async {
+    if (Platform.isIOS) {
+      bool shouldSetCategory = true;
+      AVAudioSessionCategory? previousCategory = await avAudioSession?.category;
+      if (previousCategory == category) {
+        AVAudioSessionMode? previousMode = await avAudioSession?.mode;
+        if (previousMode == mode) {
+          AVAudioSessionCategoryOptions? previousOptions =
+              await avAudioSession?.categoryOptions;
+          if (previousOptions == options) {
+            AVAudioSessionRouteSharingPolicy? previousPolicy =
+                await avAudioSession?.routeSharingPolicy;
+            if (previousPolicy == policy) {
+              shouldSetCategory = false;
+            }
+          }
+        }
+      }
+      if (shouldSetCategory) {
+        ///设置category会改变音频输入输出设备
+        await avAudioSession!
+            .setCategory(category, options, mode, policy)
+            .catchError((error) {
+          print(error);
+        });
+        _refreshAllDevices();
+      }
+    }
   }
 
   static AudioDeviceType _darwinPort2type(AVAudioSessionPort port,
@@ -314,6 +495,21 @@ class AudioSession {
       isOutput: device.isSink,
       type: _androidType2type(device.type),
     );
+  }
+}
+
+class _Debouncer {
+  final Duration delay;
+  Timer? _timer;
+
+  _Debouncer({required this.delay});
+
+  void run(void Function() action) {
+    _timer?.cancel(); // 取消之前的计时器
+    _timer = Timer(delay, () {
+      action();
+      _timer = null; // 计时器完成后将其设置为null
+    }); // 启动新的计时器
   }
 }
 
