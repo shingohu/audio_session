@@ -334,7 +334,6 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
         private Context applicationContext;
         private AudioManager audioManager;
         private Object audioDeviceCallback;
-        private List<AudioDeviceInfo> devices = new ArrayList<AudioDeviceInfo>();
 
         public Singleton(Context applicationContext) {
             this.applicationContext = applicationContext;
@@ -485,7 +484,7 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
         @TargetApi(31)
         public List<Map<String, Object>> getAvailableCommunicationDevices() {
             requireApi(31);
-            devices = audioManager.getAvailableCommunicationDevices();
+            List<AudioDeviceInfo> devices = audioManager.getAvailableCommunicationDevices();
             ArrayList<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
             for (AudioDeviceInfo device : devices) {
                 result.add(encodeAudioDevice(device));
@@ -496,6 +495,7 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
         @TargetApi(31)
         public boolean setCommunicationDevice(Integer deviceId) {
             requireApi(31);
+            List<AudioDeviceInfo> devices = audioManager.getAvailableCommunicationDevices();
             for (AudioDeviceInfo device : devices) {
                 if (device.getId() == deviceId) {
                     return audioManager.setCommunicationDevice(device);
