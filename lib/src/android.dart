@@ -456,6 +456,15 @@ class AndroidAudioManager {
     return _channel.invokeMethod('setVolumeControlStream', [streamType.index]);
   }
 
+  Future<bool> isLeAudioSupported() async {
+    return (await _channel.invokeMethod<bool>('isLeAudioSupported'))!;
+  }
+
+  Future<bool> isLeAudioBroadcastSourceSupported() async {
+    return (await _channel
+        .invokeMethod<bool>('isLeAudioBroadcastSourceSupported'))!;
+  }
+
   ///get sdk version
   Future<int> sdkVersion() async {
     if (sdkInt != -1) {

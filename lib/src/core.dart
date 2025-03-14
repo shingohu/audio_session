@@ -64,8 +64,9 @@ class AudioSession {
   bool get isBluetoothPlugged {
     return _audioDevices.any((device) {
       return device.type == AudioDeviceType.bluetoothA2dp ||
-          device.type == AudioDeviceType.bluetoothLe ||
-          device.type == AudioDeviceType.bluetoothSco;
+          device.type == AudioDeviceType.bluetoothSco ||
+          device.type == AudioDeviceType.bleHeadset ||
+          device.type == AudioDeviceType.bleSpeaker;
     });
   }
 
