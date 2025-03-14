@@ -1,9 +1,9 @@
-#import "./include/audio_session/DarwinAudioSession.h"
+#import "./include/audio_session/UUDarwinAudioSession.h"
 #import <AVFoundation/AVFoundation.h>
 #import <CoreTelephony/CTCallCenter.h>
 #import <CoreTelephony/CTCall.h>
 
-@implementation DarwinAudioSession {
+@implementation UUDarwinAudioSession {
     NSObject<FlutterPluginRegistrar>* _registrar;
     FlutterMethodChannel *_channel;
     dispatch_queue_t _opDispatchQueue;

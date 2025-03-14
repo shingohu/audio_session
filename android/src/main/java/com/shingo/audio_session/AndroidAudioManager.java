@@ -20,6 +20,7 @@ import android.util.Pair;
 import android.view.KeyEvent;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.media.AudioAttributesCompat;
 import androidx.media.AudioFocusRequestCompat;
@@ -64,9 +65,29 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
 
     @Override
     public void onMethodCall(@NonNull final MethodCall call, @NonNull final Result result) {
+        List<?> args = (List<?>) call.arguments;
+        String method = call.method;
+        if ("setVolumeControlStream".equals(method)) {
+            if (mActivity != null) {
+                mActivity.setVolumeControlStream((Integer) args.get(0));
+            }
+            result.success(null);
+            return;
+        }
+        if ("sdkVersion".equals(method)) {
+            result.success(Build.VERSION.SDK_INT);
+            return;
+        }
+        if ("isLeAudioSupported".equals(method)) {
+            result.success(singleton.isLeAudioSupported());
+            return;
+        }
+        if ("isLeAudioBroadcastSourceSupported".equals(method)) {
+            result.success(singleton.isLeAudioBroadcastSourceSupported());
+            return;
+        }
         opService.submit(() -> {
             try {
-                List<?> args = (List<?>) call.arguments;
                 switch (call.method) {
                     case "requestAudioFocus": {
                         result.success(singleton.requestAudioFocus(args));
@@ -260,22 +281,6 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
                         result.success(null);
                         break;
                     }
-                    case "setVolumeControlStream": {
-                        if (mActivity != null) {
-                            mActivity.setVolumeControlStream((Integer) args.get(0));
-                        }
-                        result.success(null);
-                        break;
-                    }
-                    case "sdkVersion":
-                        result.success(Build.VERSION.SDK_INT);
-                        break;
-                    case "isLeAudioSupported": {
-                        result.success(singleton.isLeAudioSupported());
-                    }
-                    case "isLeAudioBroadcastSourceSupported": {
-                        result.success(singleton.isLeAudioBroadcastSourceSupported());
-                    }
                     default: {
                         result.notImplemented();
                         break;
@@ -335,28 +340,86 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
         private AudioManager audioManager;
         private Object audioDeviceCallback;
 
+        private AudioManager.OnModeChangedListener modeChangedListener;
+        private AudioManager.OnCommunicationDeviceChangedListener communicationDeviceChangedListener;
+
         public Singleton(Context applicationContext) {
             this.applicationContext = applicationContext;
             audioManager = (AudioManager) applicationContext.getSystemService(Context.AUDIO_SERVICE);
-            if (Build.VERSION.SDK_INT >= 23) {
-                initAudioDeviceCallback();
+            initAudioDeviceCallback();
+            addModeChangedCallback();
+            addCommunicationDeviceCallback();
+        }
+
+        private void addModeChangedCallback() {
+            if (Build.VERSION.SDK_INT >= 31) {
+                modeChangedListener = mode -> {
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            invokeMethod("onModeChanged", intArrayToList(new int[]{mode}));
+                        }
+                    });
+
+                };
+                audioManager.addOnModeChangedListener(Executors.newSingleThreadExecutor(), modeChangedListener);
             }
         }
 
-        @TargetApi(23)
-        private void initAudioDeviceCallback() {
-            audioDeviceCallback = new AudioDeviceCallback() {
-                @Override
-                public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
-                    invokeMethod("onAudioDevicesAdded", encodeAudioDevices(addedDevices));
+        private void removeModeChangedCallback() {
+            if (Build.VERSION.SDK_INT >= 31) {
+                if (modeChangedListener != null) {
+                    audioManager.removeOnModeChangedListener(modeChangedListener);
+                    modeChangedListener = null;
                 }
+            }
+        }
 
-                @Override
-                public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
-                    invokeMethod("onAudioDevicesRemoved", encodeAudioDevices(removedDevices));
+
+        private void addCommunicationDeviceCallback() {
+            if (Build.VERSION.SDK_INT >= 31) {
+                communicationDeviceChangedListener = new AudioManager.OnCommunicationDeviceChangedListener() {
+
+                    @Override
+                    public void onCommunicationDeviceChanged(@Nullable AudioDeviceInfo device) {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                invokeMethod("onCommunicationDeviceChanged", encodeAudioDevices(new AudioDeviceInfo[]{device}));
+                            }
+                        });
+
+                    }
+                };
+                audioManager.addOnCommunicationDeviceChangedListener(Executors.newSingleThreadExecutor(),
+                        communicationDeviceChangedListener);
+            }
+        }
+
+        private void removeCommunicationDeviceCallback() {
+            if (Build.VERSION.SDK_INT >= 31) {
+                if (communicationDeviceChangedListener != null) {
+                    audioManager.removeOnCommunicationDeviceChangedListener(communicationDeviceChangedListener);
+                    communicationDeviceChangedListener = null;
                 }
-            };
-            audioManager.registerAudioDeviceCallback((AudioDeviceCallback) audioDeviceCallback, handler);
+            }
+        }
+
+        private void initAudioDeviceCallback() {
+            if (Build.VERSION.SDK_INT >= 23) {
+                audioDeviceCallback = new AudioDeviceCallback() {
+                    @Override
+                    public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
+                        invokeMethod("onAudioDevicesAdded", encodeAudioDevices(addedDevices));
+                    }
+
+                    @Override
+                    public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
+                        invokeMethod("onAudioDevicesRemoved", encodeAudioDevices(removedDevices));
+                    }
+                };
+                audioManager.registerAudioDeviceCallback((AudioDeviceCallback) audioDeviceCallback, handler);
+            }
         }
 
         public void add(AndroidAudioManager manager) {
@@ -760,9 +823,9 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
 
         public void dispose() {
             abandonAudioFocus();
-            if (Build.VERSION.SDK_INT >= 23) {
-                disposeAudioDeviceCallback();
-            }
+            disposeAudioDeviceCallback();
+            removeModeChangedCallback();
+            removeCommunicationDeviceCallback();
             unregisterNoisyReceiver();
             unregisterScoReceiver();
             applicationContext = null;
@@ -771,7 +834,11 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
 
         @TargetApi(23)
         private void disposeAudioDeviceCallback() {
-            audioManager.unregisterAudioDeviceCallback((AudioDeviceCallback) audioDeviceCallback);
+            if (Build.VERSION.SDK_INT >= 23) {
+                if (audioDeviceCallback != null) {
+                    audioManager.unregisterAudioDeviceCallback((AudioDeviceCallback) audioDeviceCallback);
+                }
+            }
         }
 
         public boolean isLeAudioSupported() {

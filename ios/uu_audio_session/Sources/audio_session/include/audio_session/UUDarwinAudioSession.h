@@ -4,7 +4,7 @@
     #define AUDIO_SESSION_MICROPHONE 1
 #endif
 
-@interface DarwinAudioSession : NSObject
+@interface UUDarwinAudioSession : NSObject
 
 @property (readonly, nonatomic) FlutterMethodChannel *channel;
 

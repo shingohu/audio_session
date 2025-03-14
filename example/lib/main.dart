@@ -13,11 +13,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
@@ -27,7 +22,7 @@ class _MyAppState extends State<MyApp> {
         body: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [],
+            children: [TextButton(onPressed: () async {}, child: Text("测试"))],
           ),
         ),
       ),

@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.ryanheise.audio_session_example"
+    namespace = "com.shingo.audio_session_example"
     compileSdk = 34
 
     compileOptions {
@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.ryanheise.audio_session_example"
+        applicationId = "com.shingo.audio_session_example"
         minSdk = flutter.minSdkVersion
         targetSdk = 34
         versionCode = flutter.versionCode

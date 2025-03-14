@@ -8,16 +8,36 @@ import 'util.dart';
 /// works on GitHub.
 class AndroidAudioManager {
   static const MethodChannel _channel =
-  MethodChannel('com.shingo.android_audio_manager');
+      MethodChannel('com.shingo.android_audio_manager');
   static AndroidAudioManager? _instance;
 
   final _scoAudioUpdatedEventSubject =
-  StreamController<AndroidScoAudioEvent>.broadcast();
+      StreamController<AndroidScoAudioEvent>.broadcast();
   final _becomingNoisyEventSubject = StreamController<void>.broadcast();
   AndroidOnAudioFocusChanged? _onAudioFocusChanged;
   AndroidOnAudioDevicesChanged? _onAudioDevicesAdded;
   AndroidOnAudioDevicesChanged? _onAudioDevicesRemoved;
-  int sdkInt = -1;
+  int _sdkInt = -1;
+
+  int get sdkInt => _sdkInt;
+
+  Stream<void> get becomingNoisyEventStream =>
+      _becomingNoisyEventSubject.stream;
+
+  Stream<AndroidScoAudioEvent> get scoAudioEventStream =>
+      _scoAudioUpdatedEventSubject.stream;
+
+  final _modeChangeEventSubject =
+      StreamController<AndroidAudioHardwareMode>.broadcast();
+
+  Stream<AndroidAudioHardwareMode> get modeChangeStream =>
+      _modeChangeEventSubject.stream;
+
+  final _communicationDeviceChangeEventSubject =
+      StreamController<AndroidAudioDeviceInfo>.broadcast();
+
+  Stream<AndroidAudioDeviceInfo> get communicationDeviceChangeStream =>
+      _communicationDeviceChangeEventSubject.stream;
 
   factory AndroidAudioManager() {
     return _instance ??= AndroidAudioManager._();
@@ -58,26 +78,26 @@ class AndroidAudioManager {
           }
           break;
         case 'onScoAudioStateUpdated':
-          _androidScoAudioEvent = _decodeScoAudioEvent(args);
-          _scoAudioUpdatedEventSubject.add(_androidScoAudioEvent!);
+          _scoAudioUpdatedEventSubject.add(_decodeScoAudioEvent(args));
+          break;
+        case 'onModeChanged':
+          int modeIndex = args[0][0];
+          AndroidAudioHardwareMode mode = decodeMapEnum(
+              AndroidAudioHardwareMode.values, modeIndex,
+              defaultValue: AndroidAudioHardwareMode.normal);
+          _modeChangeEventSubject.add(mode);
+          break;
+        case "onCommunicationDeviceChanged":
+          AndroidAudioDeviceInfo communicationDevice =
+              _decodeAudioDevice(args[0][0]);
+          _communicationDeviceChangeEventSubject.add(communicationDevice);
           break;
       }
     });
-    sdkVersion().then((result) {
-      sdkInt = result;
+    sdkVersion().then((value) {
+      _sdkInt = value;
     });
   }
-
-  Stream<void> get becomingNoisyEventStream =>
-      _becomingNoisyEventSubject.stream;
-
-  Stream<AndroidScoAudioEvent> get scoAudioEventStream =>
-      _scoAudioUpdatedEventSubject.stream;
-
-  AndroidScoAudioEvent? _androidScoAudioEvent = null;
-
-  AndroidScoAudioState? get currentScoAudioState =>
-      _androidScoAudioEvent?.currentState;
 
   Future<bool> requestAudioFocus(AndroidAudioFocusRequest focusRequest) async {
     _onAudioFocusChanged = focusRequest.onAudioFocusChanged;
@@ -107,13 +127,14 @@ class AndroidAudioManager {
   }
 
   /// (UNTESTED)
-  Future<void> adjustVolume(AndroidAudioAdjustment direction,
-      AndroidAudioVolumeFlags flags) async {
+  Future<void> adjustVolume(
+      AndroidAudioAdjustment direction, AndroidAudioVolumeFlags flags) async {
     await _channel.invokeMethod('adjustVolume', [direction.index, flags.value]);
   }
 
   /// (UNTESTED)
-  Future<void> adjustSuggestedStreamVolume(AndroidAudioAdjustment direction,
+  Future<void> adjustSuggestedStreamVolume(
+      AndroidAudioAdjustment direction,
       AndroidStreamType? suggestedStreamType,
       AndroidAudioVolumeFlags flags) async {
     const useDefaultStreamType = 0x80000000;
@@ -178,9 +199,9 @@ class AndroidAudioManager {
 
   /// (UNTESTED) Requires API level 31
   Future<List<AndroidAudioDeviceInfo>>
-  getAvailableCommunicationDevices() async {
-    return _decodeAudioDevices((await _channel.invokeMethod<List<dynamic>>(
-        'getAvailableCommunicationDevices')));
+      getAvailableCommunicationDevices() async {
+    return _decodeAudioDevices((await _channel
+        .invokeMethod<List<dynamic>>('getAvailableCommunicationDevices')));
   }
 
   /// Requires API level 31
@@ -341,14 +362,12 @@ class AndroidAudioManager {
       _getBoolProperty('android.media.property.SUPPORT_MIC_NEAR_ULTRASOUND');
 
   /// (UNTESTED) Requires API level 17
-  Future<bool> getSupportSpeakerNearUltrasound() =>
-      _getBoolProperty(
-          'android.media.property.SUPPORT_SPEAKER_NEAR_ULTRASOUND');
+  Future<bool> getSupportSpeakerNearUltrasound() => _getBoolProperty(
+      'android.media.property.SUPPORT_SPEAKER_NEAR_ULTRASOUND');
 
   /// (UNTESTED) Requires API level 17
-  Future<bool> getSupportAudioSourceUnprocessed() =>
-      _getBoolProperty(
-          'android.media.property.SUPPORT_AUDIO_SOURCE_UNPROCESSED');
+  Future<bool> getSupportAudioSourceUnprocessed() => _getBoolProperty(
+      'android.media.property.SUPPORT_AUDIO_SOURCE_UNPROCESSED');
 
   /// (UNTESTED) Requires API level 17
   Future<bool> _getBoolProperty(String key) async {
@@ -377,34 +396,33 @@ class AndroidAudioManager {
   /// (UNTESTED) Requires API level 28
   Future<List<AndroidMicrophoneInfo>> getMicrophones() async {
     return ((await _channel
-        .invokeListMethod<Map<dynamic, dynamic>>('getMicrophones'))!)
+            .invokeListMethod<Map<dynamic, dynamic>>('getMicrophones'))!)
         .map((raw) => raw.cast<String, dynamic>())
-        .map((raw) =>
-        AndroidMicrophoneInfo(
-          description: raw['description'] as String,
-          id: raw['id'] as int,
-          type: raw['type'] as int,
-          address: raw['address'] as String,
-          location: decodeEnum(
-              AndroidMicrophoneLocation.values, raw['location'] as int?,
-              defaultValue: AndroidMicrophoneLocation.unknown),
-          group: raw['group'] as int,
-          indexInTheGroup: raw['indexInTheGroup'] as int,
-          position: (raw['position'] as List<dynamic>).cast<double>(),
-          orientation: (raw['orientation'] as List<dynamic>).cast<double>(),
-          frequencyResponse: (raw['frequencyResponse'] as List<dynamic>)
-              .map((dynamic item) => (item as List<dynamic>).cast<double>())
-              .toList(),
-          channelMapping: (raw['channelMapping'] as List<dynamic>)
-              .map((dynamic item) => (item as List<dynamic>).cast<int>())
-              .toList(),
-          sensitivity: raw['sensitivity'] as double,
-          maxSpl: raw['maxSpl'] as double,
-          minSpl: raw['minSpl'] as double,
-          directionality: decodeEnum(AndroidMicrophoneDirectionality.values,
-              raw['directionality'] as int?,
-              defaultValue: AndroidMicrophoneDirectionality.unknown),
-        ))
+        .map((raw) => AndroidMicrophoneInfo(
+              description: raw['description'] as String,
+              id: raw['id'] as int,
+              type: raw['type'] as int,
+              address: raw['address'] as String,
+              location: decodeEnum(
+                  AndroidMicrophoneLocation.values, raw['location'] as int?,
+                  defaultValue: AndroidMicrophoneLocation.unknown),
+              group: raw['group'] as int,
+              indexInTheGroup: raw['indexInTheGroup'] as int,
+              position: (raw['position'] as List<dynamic>).cast<double>(),
+              orientation: (raw['orientation'] as List<dynamic>).cast<double>(),
+              frequencyResponse: (raw['frequencyResponse'] as List<dynamic>)
+                  .map((dynamic item) => (item as List<dynamic>).cast<double>())
+                  .toList(),
+              channelMapping: (raw['channelMapping'] as List<dynamic>)
+                  .map((dynamic item) => (item as List<dynamic>).cast<int>())
+                  .toList(),
+              sensitivity: raw['sensitivity'] as double,
+              maxSpl: raw['maxSpl'] as double,
+              minSpl: raw['minSpl'] as double,
+              directionality: decodeEnum(AndroidMicrophoneDirectionality.values,
+                  raw['directionality'] as int?,
+                  defaultValue: AndroidMicrophoneDirectionality.unknown),
+            ))
         .toList();
   }
 
@@ -440,7 +458,11 @@ class AndroidAudioManager {
 
   ///get sdk version
   Future<int> sdkVersion() async {
-    return (await _channel.invokeMethod('sdkVersion')) as int;
+    if (sdkInt != -1) {
+      return sdkInt;
+    }
+    _sdkInt = (await _channel.invokeMethod('sdkVersion')) as int;
+    return _sdkInt;
   }
 
   void close() {
@@ -471,7 +493,7 @@ class AndroidAudioManager {
       sampleRates: (raw['sampleRates'] as List<dynamic>).cast<int>(),
       channelMasks: (raw['channelMasks'] as List<dynamic>).cast<int>(),
       channelIndexMasks:
-      (raw['channelIndexMasks'] as List<dynamic>).cast<int>(),
+          (raw['channelIndexMasks'] as List<dynamic>).cast<int>(),
       channelCounts: (raw['channelCounts'] as List<dynamic>).cast<int>(),
       encodings: (raw['encodings'] as List<dynamic>).cast<int>(),
       type: decodeEnum(AndroidAudioDeviceType.values, raw['type'] as int?,
@@ -499,16 +521,15 @@ class AndroidAudioAttributes {
 
   AndroidAudioAttributes.fromJson(Map<String, dynamic> data)
       : this(
-    contentType: decodeEnum(
-        AndroidAudioContentType.values, data['contentType'] as int?,
-        defaultValue: AndroidAudioContentType.unknown),
-    flags: AndroidAudioFlags(data['flags'] as int),
-    usage: decodeMapEnum(AndroidAudioUsage.values, data['usage'] as int?,
-        defaultValue: AndroidAudioUsage.unknown),
-  );
+          contentType: decodeEnum(
+              AndroidAudioContentType.values, data['contentType'] as int?,
+              defaultValue: AndroidAudioContentType.unknown),
+          flags: AndroidAudioFlags(data['flags'] as int),
+          usage: decodeMapEnum(AndroidAudioUsage.values, data['usage'] as int?,
+              defaultValue: AndroidAudioUsage.unknown),
+        );
 
-  Map<String, dynamic> toJson() =>
-      {
+  Map<String, dynamic> toJson() => {
         'contentType': contentType.index,
         'flags': flags.value,
         'usage': usage.value,
@@ -517,9 +538,9 @@ class AndroidAudioAttributes {
   @override
   bool operator ==(Object other) =>
       other is AndroidAudioAttributes &&
-          contentType == other.contentType &&
-          flags == other.flags &&
-          usage == other.usage;
+      contentType == other.contentType &&
+      flags == other.flags &&
+      usage == other.usage;
 
   @override
   int get hashCode =>
@@ -636,8 +657,7 @@ class AndroidAudioFocusRequest {
     this.onAudioFocusChanged,
   });
 
-  Map<String, dynamic> toJson() =>
-      {
+  Map<String, dynamic> toJson() => {
         'gainType': gainType.index,
         'audioAttribute': audioAttributes?.toJson(),
         'willPauseWhenDucked': willPauseWhenDucked,
@@ -720,32 +740,32 @@ class AndroidAudioVolumeFlags {
   // TODO: Make this camelcase
   // ignore: constant_identifier_names
   static const AndroidAudioVolumeFlags allowRinger_modes =
-  AndroidAudioVolumeFlags(1 << 1);
+      AndroidAudioVolumeFlags(1 << 1);
   static const AndroidAudioVolumeFlags playSound =
-  AndroidAudioVolumeFlags(1 << 2);
+      AndroidAudioVolumeFlags(1 << 2);
   static const AndroidAudioVolumeFlags removeSoundAndVibrate =
-  AndroidAudioVolumeFlags(1 << 3);
+      AndroidAudioVolumeFlags(1 << 3);
   static const AndroidAudioVolumeFlags vibrate =
-  AndroidAudioVolumeFlags(1 << 4);
+      AndroidAudioVolumeFlags(1 << 4);
   static const AndroidAudioVolumeFlags fixedVolume =
-  AndroidAudioVolumeFlags(1 << 5);
+      AndroidAudioVolumeFlags(1 << 5);
   static const AndroidAudioVolumeFlags bluetoothAbsVolume =
-  AndroidAudioVolumeFlags(1 << 6);
+      AndroidAudioVolumeFlags(1 << 6);
 
   // TODO: Make this camelcase
   // ignore: constant_identifier_names
   static const AndroidAudioVolumeFlags show_silent_hint =
-  AndroidAudioVolumeFlags(1 << 7);
+      AndroidAudioVolumeFlags(1 << 7);
   static const AndroidAudioVolumeFlags hdmiSystemAudioVolume =
-  AndroidAudioVolumeFlags(1 << 8);
+      AndroidAudioVolumeFlags(1 << 8);
   static const AndroidAudioVolumeFlags activeMediaOnly =
-  AndroidAudioVolumeFlags(1 << 9);
+      AndroidAudioVolumeFlags(1 << 9);
   static const AndroidAudioVolumeFlags showUiWarnings =
-  AndroidAudioVolumeFlags(1 << 10);
+      AndroidAudioVolumeFlags(1 << 10);
   static const AndroidAudioVolumeFlags showVibrateHint =
-  AndroidAudioVolumeFlags(1 << 11);
+      AndroidAudioVolumeFlags(1 << 11);
   static const AndroidAudioVolumeFlags fromKey =
-  AndroidAudioVolumeFlags(1 << 12);
+      AndroidAudioVolumeFlags(1 << 12);
 
   final int value;
 
@@ -942,13 +962,13 @@ enum AndroidMicrophoneDirectionality {
 /// Requires API level 23
 class AndroidGetAudioDevicesFlags {
   static const AndroidGetAudioDevicesFlags none =
-  AndroidGetAudioDevicesFlags(0);
+      AndroidGetAudioDevicesFlags(0);
   static const AndroidGetAudioDevicesFlags inputs =
-  AndroidGetAudioDevicesFlags(1 << 0);
+      AndroidGetAudioDevicesFlags(1 << 0);
   static const AndroidGetAudioDevicesFlags outputs =
-  AndroidGetAudioDevicesFlags(1 << 1);
+      AndroidGetAudioDevicesFlags(1 << 1);
   static final AndroidGetAudioDevicesFlags all =
-  AndroidGetAudioDevicesFlags.inputs | AndroidGetAudioDevicesFlags.outputs;
+      AndroidGetAudioDevicesFlags.inputs | AndroidGetAudioDevicesFlags.outputs;
 
   final int value;
 
@@ -999,8 +1019,7 @@ class AndroidKeyEvent {
     required this.eventTime,
   });
 
-  Map<String, dynamic> _toMap() =>
-      <String, dynamic>{
+  Map<String, dynamic> _toMap() => <String, dynamic>{
         'deviceId': deviceId,
         'source': source,
         'metaState': metaState,

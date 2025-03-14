@@ -1,9 +1,9 @@
 #import "./include/audio_session/UUAudioSessionPlugin.h"
-#import "./include/audio_session/DarwinAudioSession.h"
+#import "./include/audio_session/UUDarwinAudioSession.h"
 
 
 @implementation UUAudioSessionPlugin {
-    DarwinAudioSession *_darwinAudioSession;
+    UUDarwinAudioSession *_darwinAudioSession;
 }
 
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
@@ -13,7 +13,7 @@
 - (instancetype)initWithRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {
     self = [super init];
     NSAssert(self, @"super init cannot be nil");
-    _darwinAudioSession = [[DarwinAudioSession alloc] initWithRegistrar:registrar];
+    _darwinAudioSession = [[UUDarwinAudioSession alloc] initWithRegistrar:registrar];
     return self;
 }
 
