@@ -312,9 +312,9 @@ class AndroidAudioManager {
   Future<void> setParameters(Map<String, String> parameters) async {
     await _channel.invokeMethod(
         'setParameters',
-        parameters.entries
+        [parameters.entries
             .map((entry) => '${entry.key}=${entry.value}')
-            .join(';'));
+            .join(';')]);
   }
 
   /// (UNTESTED)
