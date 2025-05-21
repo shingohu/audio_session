@@ -35,13 +35,13 @@ class AudioSession {
   final avAudioSession = Platform.isIOS ? AVAudioSession() : null;
 
   final StreamController<AudioInterruptionEvent> _interruptionEventSubject =
-      StreamController.broadcast();
+  StreamController.broadcast();
   final StreamController<void> _becomingNoisyEventSubject =
-      StreamController.broadcast();
+  StreamController.broadcast();
   final StreamController<AudioDevicesChangedEvent> _devicesChangedEventSubject =
-      StreamController.broadcast();
+  StreamController.broadcast();
   final StreamController<List<AudioDevice>> _devicesSubject =
-      StreamController.broadcast();
+  StreamController.broadcast();
 
   AVAudioSessionRouteDescription? _previousAVAudioSessionRoute;
 
@@ -91,7 +91,7 @@ class AudioSession {
           _interruptionEventSubject.add(AudioInterruptionEvent(
               false,
               notification.options
-                      .contains(AVAudioSessionInterruptionOptions.shouldResume)
+                  .contains(AVAudioSessionInterruptionOptions.shouldResume)
                   ? AudioInterruptionType.pause
                   : AudioInterruptionType.unknown));
           break;
@@ -99,10 +99,10 @@ class AudioSession {
     });
     avAudioSession?.routeChangeStream
         .where((routeChange) =>
-            routeChange.reason ==
-                AVAudioSessionRouteChangeReason.oldDeviceUnavailable ||
-            routeChange.reason ==
-                AVAudioSessionRouteChangeReason.newDeviceAvailable)
+    routeChange.reason ==
+        AVAudioSessionRouteChangeReason.oldDeviceUnavailable ||
+        routeChange.reason ==
+            AVAudioSessionRouteChangeReason.newDeviceAvailable)
         .listen((routeChange) async {
       if (routeChange.reason ==
           AVAudioSessionRouteChangeReason.oldDeviceUnavailable) {
@@ -113,24 +113,26 @@ class AudioSession {
       final previousRoute = _previousAVAudioSessionRoute ?? currentRoute;
       _previousAVAudioSessionRoute = currentRoute;
       final inputPortsAdded =
-          currentRoute.inputs.difference(previousRoute.inputs);
+      currentRoute.inputs.difference(previousRoute.inputs);
       final outputPortsAdded =
-          currentRoute.outputs.difference(previousRoute.outputs);
+      currentRoute.outputs.difference(previousRoute.outputs);
       final inputPortsRemoved =
-          previousRoute.inputs.difference(currentRoute.inputs);
+      previousRoute.inputs.difference(currentRoute.inputs);
       final outputPortsRemoved =
-          previousRoute.outputs.difference(currentRoute.outputs);
+      previousRoute.outputs.difference(currentRoute.outputs);
       final inputPorts = inputPortsAdded.union(inputPortsRemoved);
       final outputPorts = outputPortsAdded.union(outputPortsRemoved);
 
       final devicesAdded = inputPortsAdded
           .union(outputPortsAdded)
-          .map((port) => _darwinPort2device(port,
+          .map((port) =>
+          _darwinPort2device(port,
               inputPorts: inputPorts, outputPorts: outputPorts))
           .toSet();
       final devicesRemoved = inputPortsRemoved
           .union(outputPortsRemoved)
-          .map((port) => _darwinPort2device(port,
+          .map((port) =>
+          _darwinPort2device(port,
               inputPorts: inputPorts, outputPorts: outputPorts))
           .toSet();
 
@@ -193,20 +195,23 @@ class AudioSession {
       if (includeInputs) {
         final darwinInputs = await avAudioSession!.availableInputs;
         devices.addAll(darwinInputs
-            .map((port) => _darwinPort2device(
-                  port,
-                  inputPorts: darwinInputs,
-                  outputPorts: currentRoute.outputs,
-                ))
+            .map((port) =>
+            _darwinPort2device(
+              port,
+              inputPorts: darwinInputs,
+              outputPorts: currentRoute.outputs,
+            ))
             .toSet());
-        devices.addAll(currentRoute.inputs.map((port) => _darwinPort2device(
+        devices.addAll(currentRoute.inputs.map((port) =>
+            _darwinPort2device(
               port,
               inputPorts: currentRoute.inputs,
               outputPorts: currentRoute.outputs,
             )));
       }
       if (includeOutputs) {
-        devices.addAll(currentRoute.outputs.map((port) => _darwinPort2device(
+        devices.addAll(currentRoute.outputs.map((port) =>
+            _darwinPort2device(
               port,
               inputPorts: currentRoute.inputs,
               outputPorts: currentRoute.outputs,
@@ -251,9 +256,9 @@ class AudioSession {
   ///请求或者释放音频焦点
   Future<bool> setActive(bool active,
       {AndroidAudioFocusGainType? androidAudioFocusGainType,
-      AndroidAudioAttributes? androidAudioAttributes,
-      bool? androidWillPauseWhenDucked,
-      AVAudioSessionSetActiveOptions? avOptions}) async {
+        AndroidAudioAttributes? androidAudioAttributes,
+        bool? androidWillPauseWhenDucked,
+        AVAudioSessionSetActiveOptions? avOptions}) async {
     if (Platform.isAndroid) {
       if (!active) {
         return await audioManager!.abandonAudioFocus();
@@ -263,7 +268,7 @@ class AudioSession {
         return await audioManager!.requestAudioFocus(
             new AndroidAudioFocusRequest(
                 gainType:
-                    androidAudioFocusGainType ?? _defaultAndroidFocusGainType,
+                androidAudioFocusGainType ?? _defaultAndroidFocusGainType,
                 audioAttributes: androidAudioAttributes,
                 willPauseWhenDucked: pauseWhenDucked,
                 onAudioFocusChanged: (focus) {
@@ -287,8 +292,8 @@ class AudioSession {
                       ducked = false;
                       break;
                     case AndroidAudioFocus.lossTransientCanDuck:
-                      // We enforce the "will pause when ducked" configuration by
-                      // sending the app a pause event instead of a duck event.
+                    // We enforce the "will pause when ducked" configuration by
+                    // sending the app a pause event instead of a duck event.
                       _interruptionEventSubject.add(AudioInterruptionEvent(
                           true,
                           pauseWhenDucked
@@ -308,7 +313,7 @@ class AudioSession {
       } else {
         return await avAudioSession!
             .setActive(active,
-                avOptions: avOptions ?? _defaultAVAudioSessionSetActiveOptions)
+            avOptions: avOptions ?? _defaultAVAudioSessionSetActiveOptions)
             .catchError((error) {
           print(error);
           return false;
@@ -331,9 +336,9 @@ class AudioSession {
   ///set ios audio session category
   Future<void> setCategory(AVAudioSessionCategory? category,
       {AVAudioSessionCategoryOptions? options,
-      AVAudioSessionMode mode = AVAudioSessionMode.defaultMode,
-      AVAudioSessionRouteSharingPolicy policy =
-          AVAudioSessionRouteSharingPolicy.defaultPolicy}) async {
+        AVAudioSessionMode mode = AVAudioSessionMode.defaultMode,
+        AVAudioSessionRouteSharingPolicy policy =
+            AVAudioSessionRouteSharingPolicy.defaultPolicy}) async {
     if (Platform.isIOS) {
       bool shouldSetCategory = true;
       AVAudioSessionCategory? previousCategory = await avAudioSession?.category;
@@ -341,10 +346,10 @@ class AudioSession {
         AVAudioSessionMode? previousMode = await avAudioSession?.mode;
         if (previousMode == mode) {
           AVAudioSessionCategoryOptions? previousOptions =
-              await avAudioSession?.categoryOptions;
+          await avAudioSession?.categoryOptions;
           if (previousOptions == options) {
             AVAudioSessionRouteSharingPolicy? previousPolicy =
-                await avAudioSession?.routeSharingPolicy;
+            await avAudioSession?.routeSharingPolicy;
             if (previousPolicy == policy) {
               shouldSetCategory = false;
             }
@@ -386,8 +391,8 @@ class AudioSession {
         return AudioDeviceType.hdmi;
       case AVAudioSessionPort.headphones:
         return inputPorts
-                .map((desc) => desc.portType)
-                .contains(AVAudioSessionPort.headsetMic)
+            .map((desc) => desc.portType)
+            .contains(AVAudioSessionPort.headsetMic)
             ? AudioDeviceType.wiredHeadset
             : AudioDeviceType.wiredHeadphones;
       case AVAudioSessionPort.lineOut:
@@ -413,17 +418,45 @@ class AudioSession {
     }
   }
 
-  static AudioDevice _darwinPort2device(
-    AVAudioSessionPortDescription port, {
+  static AudioDevice _darwinPort2device(AVAudioSessionPortDescription port, {
     Set<AVAudioSessionPortDescription> inputPorts = const {},
     Set<AVAudioSessionPortDescription> outputPorts = const {},
   }) {
+    String? address = _extractAndFormatMacAddress(port.uid);
+
+
     return AudioDevice(
       id: port.uid,
       name: port.portName,
+      address: address,
       isInput: inputPorts.contains(port),
       isOutput: outputPorts.contains(port),
       type: _darwinPort2type(port.portType, inputPorts: inputPorts),
+    );
+  }
+
+  ///匹配并格式化mac地址
+  static String? _extractAndFormatMacAddress(String? input) {
+    if (input == null) {
+      return null;
+    }
+    // 匹配任意格式的 MAC 地址
+    final regex = RegExp(
+      r'([0-9A-Fa-f]{2}[:-]?){5}([0-9A-Fa-f]{2})',
+      caseSensitive: false,
+    );
+
+    // 查找第一个匹配项
+    final match = regex.firstMatch(input);
+    if (match == null) return null;
+
+    // 获取匹配的 MAC 地址并移除所有分隔符
+    String mac = match.group(0)!.replaceAll(RegExp(r'[:-]'), '');
+
+    // 格式化为冒号分隔格式
+    return mac.toUpperCase().replaceAllMapped(
+      RegExp(r'([0-9A-F]{2})(?=[0-9A-F])'),
+          (match) => '${match.group(0)}:',
     );
   }
 
@@ -494,6 +527,7 @@ class AudioSession {
       name: device.productName,
       isInput: device.isSource,
       isOutput: device.isSink,
+      address: _extractAndFormatMacAddress(device.address),
       type: _androidType2type(device.type),
     );
   }
@@ -569,12 +603,18 @@ class AudioDevice {
   /// The type of this device.
   final AudioDeviceType type;
 
+  ///The mac address of this device
+  ///android>=9 has address
+  ///iOS  use uid,maybe not mac address [https://stackoverflow.com/questions/59501241/how-to-detect-what-bluetooth-device-audio-is-coming-out-of]
+  final String? address;
+
   AudioDevice({
     required this.id,
     required this.name,
     required this.isInput,
     required this.isOutput,
     required this.type,
+    this.address
   });
 
   @override
@@ -585,7 +625,7 @@ class AudioDevice {
 
   @override
   String toString() =>
-      'AudioDevice(id:$id,name:$name,isInput:$isInput,isOutput:$isOutput,type:$type)';
+      'AudioDevice(id:$id,name:$name,isInput:$isInput,isOutput:$isOutput,type:$type,address:$address)';
 }
 
 /// An enumeration of the different audio device types.
