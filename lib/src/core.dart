@@ -24,8 +24,7 @@ class AudioSession {
   }
 
   ///android default audio focus request gain type
-  late AndroidAudioFocusGainType _defaultAndroidFocusGainType =
-      AndroidAudioFocusGainType.gainTransient;
+  late AndroidAudioFocusGainType _defaultAndroidFocusGainType = AndroidAudioFocusGainType.gainTransient;
 
   ///ios default audio session de active options
   late AVAudioSessionSetActiveOptions _defaultAVAudioSessionSetActiveOptions =
@@ -34,14 +33,10 @@ class AudioSession {
   final audioManager = Platform.isAndroid ? AndroidAudioManager() : null;
   final avAudioSession = Platform.isIOS ? AVAudioSession() : null;
 
-  final StreamController<AudioInterruptionEvent> _interruptionEventSubject =
-  StreamController.broadcast();
-  final StreamController<void> _becomingNoisyEventSubject =
-  StreamController.broadcast();
-  final StreamController<AudioDevicesChangedEvent> _devicesChangedEventSubject =
-  StreamController.broadcast();
-  final StreamController<List<AudioDevice>> _devicesSubject =
-  StreamController.broadcast();
+  final StreamController<AudioInterruptionEvent> _interruptionEventSubject = StreamController.broadcast();
+  final StreamController<void> _becomingNoisyEventSubject = StreamController.broadcast();
+  final StreamController<AudioDevicesChangedEvent> _devicesChangedEventSubject = StreamController.broadcast();
+  final StreamController<List<AudioDevice>> _devicesSubject = StreamController.broadcast();
 
   AVAudioSessionRouteDescription? _previousAVAudioSessionRoute;
 
@@ -53,12 +48,10 @@ class AudioSession {
 
   ///输出音频设备(iOS上与category有关,并且会随着category的改变而改变)
   ///android上会把所有的可以输出音频的路由都返回
-  List<AudioDevice> get outputDevices =>
-      _audioDevices.where((element) => element.isOutput).toList();
+  List<AudioDevice> get outputDevices => _audioDevices.where((element) => element.isOutput).toList();
 
   ///输入音频设备
-  List<AudioDevice> get inputDevices =>
-      _audioDevices.where((element) => element.isInput).toList();
+  List<AudioDevice> get inputDevices => _audioDevices.where((element) => element.isInput).toList();
 
   ///是否连接有蓝牙设备
   bool get isBluetoothPlugged {
@@ -73,8 +66,7 @@ class AudioSession {
   ///是否连接有有线耳机(优先级最高)
   bool get isWirelessHeadsetPlugged {
     return _audioDevices.any((device) {
-      return device.type == AudioDeviceType.wiredHeadset ||
-          device.type == AudioDeviceType.wiredHeadphones;
+      return device.type == AudioDeviceType.wiredHeadset || device.type == AudioDeviceType.wiredHeadphones;
     });
   }
 
@@ -83,15 +75,13 @@ class AudioSession {
       switch (notification.type) {
         case AVAudioSessionInterruptionType.began:
           if (notification.wasSuspended != true) {
-            _interruptionEventSubject.add(
-                AudioInterruptionEvent(true, AudioInterruptionType.unknown));
+            _interruptionEventSubject.add(AudioInterruptionEvent(true, AudioInterruptionType.unknown));
           }
           break;
         case AVAudioSessionInterruptionType.ended:
           _interruptionEventSubject.add(AudioInterruptionEvent(
               false,
-              notification.options
-                  .contains(AVAudioSessionInterruptionOptions.shouldResume)
+              notification.options.contains(AVAudioSessionInterruptionOptions.shouldResume)
                   ? AudioInterruptionType.pause
                   : AudioInterruptionType.unknown));
           break;
@@ -99,41 +89,30 @@ class AudioSession {
     });
     avAudioSession?.routeChangeStream
         .where((routeChange) =>
-    routeChange.reason ==
-        AVAudioSessionRouteChangeReason.oldDeviceUnavailable ||
-        routeChange.reason ==
-            AVAudioSessionRouteChangeReason.newDeviceAvailable)
+            routeChange.reason == AVAudioSessionRouteChangeReason.oldDeviceUnavailable ||
+            routeChange.reason == AVAudioSessionRouteChangeReason.newDeviceAvailable)
         .listen((routeChange) async {
-      if (routeChange.reason ==
-          AVAudioSessionRouteChangeReason.oldDeviceUnavailable) {
+      if (routeChange.reason == AVAudioSessionRouteChangeReason.oldDeviceUnavailable) {
         // TODO: Check specifically if headphones were unplugged.
         _becomingNoisyEventSubject.add(null);
       }
       final currentRoute = await avAudioSession!.currentRoute;
       final previousRoute = _previousAVAudioSessionRoute ?? currentRoute;
       _previousAVAudioSessionRoute = currentRoute;
-      final inputPortsAdded =
-      currentRoute.inputs.difference(previousRoute.inputs);
-      final outputPortsAdded =
-      currentRoute.outputs.difference(previousRoute.outputs);
-      final inputPortsRemoved =
-      previousRoute.inputs.difference(currentRoute.inputs);
-      final outputPortsRemoved =
-      previousRoute.outputs.difference(currentRoute.outputs);
+      final inputPortsAdded = currentRoute.inputs.difference(previousRoute.inputs);
+      final outputPortsAdded = currentRoute.outputs.difference(previousRoute.outputs);
+      final inputPortsRemoved = previousRoute.inputs.difference(currentRoute.inputs);
+      final outputPortsRemoved = previousRoute.outputs.difference(currentRoute.outputs);
       final inputPorts = inputPortsAdded.union(inputPortsRemoved);
       final outputPorts = outputPortsAdded.union(outputPortsRemoved);
 
       final devicesAdded = inputPortsAdded
           .union(outputPortsAdded)
-          .map((port) =>
-          _darwinPort2device(port,
-              inputPorts: inputPorts, outputPorts: outputPorts))
+          .map((port) => _darwinPort2device(port, inputPorts: inputPorts, outputPorts: outputPorts))
           .toSet();
       final devicesRemoved = inputPortsRemoved
           .union(outputPortsRemoved)
-          .map((port) =>
-          _darwinPort2device(port,
-              inputPorts: inputPorts, outputPorts: outputPorts))
+          .map((port) => _darwinPort2device(port, inputPorts: inputPorts, outputPorts: outputPorts))
           .toSet();
 
       _devicesChangedEventSubject.add(AudioDevicesChangedEvent(
@@ -143,8 +122,7 @@ class AudioSession {
 
       _refreshAllDevices();
     });
-    audioManager?.becomingNoisyEventStream
-        .listen((event) => _becomingNoisyEventSubject.add(null));
+    audioManager?.becomingNoisyEventStream.listen((event) => _becomingNoisyEventSubject.add(null));
 
     audioManager?.setAudioDevicesAddedListener((devices) async {
       _devicesChangedEventSubject.add(AudioDevicesChangedEvent(
@@ -164,25 +142,21 @@ class AudioSession {
   }
 
   /// A stream of [AudioInterruptionEvent]s.
-  Stream<AudioInterruptionEvent> get interruptionEventStream =>
-      _interruptionEventSubject.stream;
+  Stream<AudioInterruptionEvent> get interruptionEventStream => _interruptionEventSubject.stream;
 
   /// A stream of events that occur when audio becomes noisy (e.g. due to
   /// unplugging the headphones).
-  Stream<void> get becomingNoisyEventStream =>
-      _becomingNoisyEventSubject.stream;
+  Stream<void> get becomingNoisyEventStream => _becomingNoisyEventSubject.stream;
 
   /// A stream emitting events whenever devices are added or removed to the set
   /// of available devices.
-  Stream<AudioDevicesChangedEvent> get devicesChangedEventStream =>
-      _devicesChangedEventSubject.stream;
+  Stream<AudioDevicesChangedEvent> get devicesChangedEventStream => _devicesChangedEventSubject.stream;
 
   /// A stream emitting the set of connected devices whenever there is a change.
   Stream<List<AudioDevice>> get devicesStream => _devicesSubject.stream;
 
   /// Completes with a list of available audio devices.
-  Future<List<AudioDevice>> getDevices(
-      {bool includeInputs = true, bool includeOutputs = true}) async {
+  Future<List<AudioDevice>> getDevices({bool includeInputs = true, bool includeOutputs = true}) async {
     final devices = <AudioDevice>{};
     if (audioManager != null) {
       var flags = AndroidGetAudioDevicesFlags.none;
@@ -195,23 +169,20 @@ class AudioSession {
       if (includeInputs) {
         final darwinInputs = await avAudioSession!.availableInputs;
         devices.addAll(darwinInputs
-            .map((port) =>
-            _darwinPort2device(
-              port,
-              inputPorts: darwinInputs,
-              outputPorts: currentRoute.outputs,
-            ))
+            .map((port) => _darwinPort2device(
+                  port,
+                  inputPorts: darwinInputs,
+                  outputPorts: currentRoute.outputs,
+                ))
             .toSet());
-        devices.addAll(currentRoute.inputs.map((port) =>
-            _darwinPort2device(
+        devices.addAll(currentRoute.inputs.map((port) => _darwinPort2device(
               port,
               inputPorts: currentRoute.inputs,
               outputPorts: currentRoute.outputs,
             )));
       }
       if (includeOutputs) {
-        devices.addAll(currentRoute.outputs.map((port) =>
-            _darwinPort2device(
+        devices.addAll(currentRoute.outputs.map((port) => _darwinPort2device(
               port,
               inputPorts: currentRoute.inputs,
               outputPorts: currentRoute.outputs,
@@ -256,53 +227,43 @@ class AudioSession {
   ///请求或者释放音频焦点
   Future<bool> setActive(bool active,
       {AndroidAudioFocusGainType? androidAudioFocusGainType,
-        AndroidAudioAttributes? androidAudioAttributes,
-        bool? androidWillPauseWhenDucked,
-        AVAudioSessionSetActiveOptions? avOptions}) async {
+      AndroidAudioAttributes? androidAudioAttributes,
+      bool? androidWillPauseWhenDucked,
+      AVAudioSessionSetActiveOptions? avOptions}) async {
     if (Platform.isAndroid) {
       if (!active) {
         return await audioManager!.abandonAudioFocus();
       } else {
         final pauseWhenDucked = androidWillPauseWhenDucked ?? false;
         var ducked = false;
-        return await audioManager!.requestAudioFocus(
-            new AndroidAudioFocusRequest(
-                gainType:
-                androidAudioFocusGainType ?? _defaultAndroidFocusGainType,
-                audioAttributes: androidAudioAttributes,
-                willPauseWhenDucked: pauseWhenDucked,
-                onAudioFocusChanged: (focus) {
-                  switch (focus) {
-                    case AndroidAudioFocus.gain:
-                      _interruptionEventSubject.add(AudioInterruptionEvent(
-                          false,
-                          ducked
-                              ? AudioInterruptionType.duck
-                              : AudioInterruptionType.pause));
-                      ducked = false;
-                      break;
-                    case AndroidAudioFocus.loss:
-                      _interruptionEventSubject.add(AudioInterruptionEvent(
-                          true, AudioInterruptionType.unknown));
-                      ducked = false;
-                      break;
-                    case AndroidAudioFocus.lossTransient:
-                      _interruptionEventSubject.add(AudioInterruptionEvent(
-                          true, AudioInterruptionType.pause));
-                      ducked = false;
-                      break;
-                    case AndroidAudioFocus.lossTransientCanDuck:
-                    // We enforce the "will pause when ducked" configuration by
-                    // sending the app a pause event instead of a duck event.
-                      _interruptionEventSubject.add(AudioInterruptionEvent(
-                          true,
-                          pauseWhenDucked
-                              ? AudioInterruptionType.pause
-                              : AudioInterruptionType.duck));
-                      if (!pauseWhenDucked) ducked = true;
-                      break;
-                  }
-                }));
+        return await audioManager!.requestAudioFocus(new AndroidAudioFocusRequest(
+            gainType: androidAudioFocusGainType ?? _defaultAndroidFocusGainType,
+            audioAttributes: androidAudioAttributes,
+            willPauseWhenDucked: pauseWhenDucked,
+            onAudioFocusChanged: (focus) {
+              switch (focus) {
+                case AndroidAudioFocus.gain:
+                  _interruptionEventSubject.add(
+                      AudioInterruptionEvent(false, ducked ? AudioInterruptionType.duck : AudioInterruptionType.pause));
+                  ducked = false;
+                  break;
+                case AndroidAudioFocus.loss:
+                  _interruptionEventSubject.add(AudioInterruptionEvent(true, AudioInterruptionType.unknown));
+                  ducked = false;
+                  break;
+                case AndroidAudioFocus.lossTransient:
+                  _interruptionEventSubject.add(AudioInterruptionEvent(true, AudioInterruptionType.pause));
+                  ducked = false;
+                  break;
+                case AndroidAudioFocus.lossTransientCanDuck:
+                  // We enforce the "will pause when ducked" configuration by
+                  // sending the app a pause event instead of a duck event.
+                  _interruptionEventSubject.add(AudioInterruptionEvent(
+                      true, pauseWhenDucked ? AudioInterruptionType.pause : AudioInterruptionType.duck));
+                  if (!pauseWhenDucked) ducked = true;
+                  break;
+              }
+            }));
       }
     } else if (Platform.isIOS) {
       if (active) {
@@ -312,8 +273,7 @@ class AudioSession {
         });
       } else {
         return await avAudioSession!
-            .setActive(active,
-            avOptions: avOptions ?? _defaultAVAudioSessionSetActiveOptions)
+            .setActive(active, avOptions: avOptions ?? _defaultAVAudioSessionSetActiveOptions)
             .catchError((error) {
           print(error);
           return false;
@@ -334,33 +294,33 @@ class AudioSession {
   }
 
   ///set ios audio session category
-  Future<void> setCategory(AVAudioSessionCategory? category,
-      {AVAudioSessionCategoryOptions? options,
-        AVAudioSessionMode mode = AVAudioSessionMode.defaultMode,
-        AVAudioSessionRouteSharingPolicy policy =
-            AVAudioSessionRouteSharingPolicy.defaultPolicy}) async {
+  Future<void> setCategory(
+    AVAudioSessionCategory? category, {
+    AVAudioSessionCategoryOptions? options,
+    AVAudioSessionMode mode = AVAudioSessionMode.defaultMode,
+    AVAudioSessionRouteSharingPolicy policy = AVAudioSessionRouteSharingPolicy.defaultPolicy,
+    bool forceUpdate = false,
+  }) async {
     if (Platform.isIOS) {
       bool shouldSetCategory = true;
-      AVAudioSessionCategory? previousCategory = await avAudioSession?.category;
-      if (previousCategory == category) {
-        AVAudioSessionMode? previousMode = await avAudioSession?.mode;
-        if (previousMode == mode) {
-          AVAudioSessionCategoryOptions? previousOptions =
-          await avAudioSession?.categoryOptions;
-          if (previousOptions == options) {
-            AVAudioSessionRouteSharingPolicy? previousPolicy =
-            await avAudioSession?.routeSharingPolicy;
-            if (previousPolicy == policy) {
-              shouldSetCategory = false;
+      if (!forceUpdate) {
+        AVAudioSessionCategory? previousCategory = await avAudioSession?.category;
+        if (previousCategory == category) {
+          AVAudioSessionMode? previousMode = await avAudioSession?.mode;
+          if (previousMode == mode) {
+            AVAudioSessionCategoryOptions? previousOptions = await avAudioSession?.categoryOptions;
+            if (previousOptions == options) {
+              AVAudioSessionRouteSharingPolicy? previousPolicy = await avAudioSession?.routeSharingPolicy;
+              if (previousPolicy == policy) {
+                shouldSetCategory = false;
+              }
             }
           }
         }
       }
       if (shouldSetCategory) {
         ///设置category会改变音频输入输出设备
-        await avAudioSession!
-            .setCategory(category, options, mode, policy)
-            .catchError((error) {
+        await avAudioSession!.setCategory(category, options, mode, policy).catchError((error) {
           print(error);
         });
         _refreshAllDevices();
@@ -390,9 +350,7 @@ class AudioSession {
       case AVAudioSessionPort.hdmi:
         return AudioDeviceType.hdmi;
       case AVAudioSessionPort.headphones:
-        return inputPorts
-            .map((desc) => desc.portType)
-            .contains(AVAudioSessionPort.headsetMic)
+        return inputPorts.map((desc) => desc.portType).contains(AVAudioSessionPort.headsetMic)
             ? AudioDeviceType.wiredHeadset
             : AudioDeviceType.wiredHeadphones;
       case AVAudioSessionPort.lineOut:
@@ -418,12 +376,12 @@ class AudioSession {
     }
   }
 
-  static AudioDevice _darwinPort2device(AVAudioSessionPortDescription port, {
+  static AudioDevice _darwinPort2device(
+    AVAudioSessionPortDescription port, {
     Set<AVAudioSessionPortDescription> inputPorts = const {},
     Set<AVAudioSessionPortDescription> outputPorts = const {},
   }) {
     String? address = _extractAndFormatMacAddress(port.uid);
-
 
     return AudioDevice(
       id: port.uid,
@@ -455,9 +413,9 @@ class AudioSession {
 
     // 格式化为冒号分隔格式
     return mac.toUpperCase().replaceAllMapped(
-      RegExp(r'([0-9A-F]{2})(?=[0-9A-F])'),
+          RegExp(r'([0-9A-F]{2})(?=[0-9A-F])'),
           (match) => '${match.group(0)}:',
-    );
+        );
   }
 
   static AudioDeviceType _androidType2type(AndroidAudioDeviceType type) {
@@ -608,14 +566,13 @@ class AudioDevice {
   ///iOS  use uid,maybe not mac address [https://stackoverflow.com/questions/59501241/how-to-detect-what-bluetooth-device-audio-is-coming-out-of]
   final String? address;
 
-  AudioDevice({
-    required this.id,
-    required this.name,
-    required this.isInput,
-    required this.isOutput,
-    required this.type,
-    this.address
-  });
+  AudioDevice(
+      {required this.id,
+      required this.name,
+      required this.isInput,
+      required this.isOutput,
+      required this.type,
+      this.address});
 
   @override
   int get hashCode => id.hashCode;
@@ -624,8 +581,7 @@ class AudioDevice {
   bool operator ==(Object other) => other is AudioDevice && id == other.id;
 
   @override
-  String toString() =>
-      'AudioDevice(id:$id,name:$name,isInput:$isInput,isOutput:$isOutput,type:$type,address:$address)';
+  String toString() => 'AudioDevice(id:$id,name:$name,isInput:$isInput,isOutput:$isOutput,type:$type,address:$address)';
 }
 
 /// An enumeration of the different audio device types.
