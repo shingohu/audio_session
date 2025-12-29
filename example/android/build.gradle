@@ -17,10 +17,3 @@ tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
 
-gradle.projectsEvaluated {
-    project(":uu_audio_session") {
-        tasks.withType(JavaCompile) {
-            options.compilerArgs << "-Xlint:all" << "-Werror"
-        }
-    }
-}

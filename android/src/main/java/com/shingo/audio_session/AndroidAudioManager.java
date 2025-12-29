@@ -1,14 +1,20 @@
 package com.shingo.audio_session;
 
+import static android.bluetooth.BluetoothProfile.STATE_CONNECTED;
+
+import android.Manifest;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.bluetooth.BluetoothStatusCodes;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.media.AudioDeviceCallback;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
@@ -21,7 +27,9 @@ import android.view.KeyEvent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.PermissionChecker;
 import androidx.media.AudioAttributesCompat;
 import androidx.media.AudioFocusRequestCompat;
 import androidx.media.AudioManagerCompat;
@@ -40,6 +48,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -51,7 +60,7 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
     BinaryMessenger messenger;
     MethodChannel channel;
 
-    ///所有操作异步队列执行
+    /// 所有操作异步队列执行
     ExecutorService opService = Executors.newSingleThreadExecutor();
 
     public AndroidAudioManager(@NonNull Context applicationContext, @NonNull BinaryMessenger messenger) {
@@ -281,6 +290,10 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
                         result.success(null);
                         break;
                     }
+                    case "getBondedDevices": {
+                        result.success(singleton.getBondedDevices());
+                        break;
+                    }
                     default: {
                         result.notImplemented();
                         break;
@@ -336,6 +349,7 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
         private AudioFocusRequestCompat audioFocusRequest;
         private BroadcastReceiver noisyReceiver;
         private BroadcastReceiver scoReceiver;
+        private BroadcastReceiver bluetoothReceiver;
         private Context applicationContext;
         private AudioManager audioManager;
         private Object audioDeviceCallback;
@@ -346,6 +360,7 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
         public Singleton(Context applicationContext) {
             this.applicationContext = applicationContext;
             audioManager = (AudioManager) applicationContext.getSystemService(Context.AUDIO_SERVICE);
+            registerBluetoothReceiver();
             initAudioDeviceCallback();
             addModeChangedCallback();
             addCommunicationDeviceCallback();
@@ -794,11 +809,67 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
             ContextCompat.registerReceiver(applicationContext, scoReceiver, new IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED), ContextCompat.RECEIVER_EXPORTED);
         }
 
+        private void unregisterBluetoothReceiver() {
+            if (bluetoothReceiver == null || applicationContext == null) return;
+            applicationContext.unregisterReceiver(bluetoothReceiver);
+            bluetoothReceiver = null;
+        }
+
+
+        private void registerBluetoothReceiver() {
+            if (bluetoothReceiver != null) return;
+            bluetoothReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    invokeMethod("onBluetoothDeviceStateChanged");
+                }
+            };
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+            filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
+            ContextCompat.registerReceiver(applicationContext, bluetoothReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
+        }
+
+        private Object getBondedDevices() {
+            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+            ArrayList<Map<String, Object>> result = new ArrayList<>();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    return result;
+                }
+            }
+            Set<BluetoothDevice> bondedDevices = adapter.getBondedDevices();
+            for (BluetoothDevice bondedDevice : bondedDevices) {
+                result.add(mapOf(
+                        "address", bondedDevice.getAddress(),
+                        "name", bondedDevice.getName(),
+                        "type", bondedDevice.getType(),
+                        "isConnected", checkBondedBluetoothDeviceConnected(bondedDevice)
+
+                ));
+            }
+            return result;
+        }
+
+        /// Helper function to check is device connected
+        private boolean checkBondedBluetoothDeviceConnected(BluetoothDevice device) {
+            try {
+                java.lang.reflect.Method method;
+                method = device.getClass().getDeclaredMethod("isConnected");
+                method.setAccessible(true);
+                return (boolean) (Boolean) method.invoke(device);
+            } catch (Exception ex) {
+                return false;
+            }
+        }
+
+
         private void unregisterScoReceiver() {
             if (scoReceiver == null || applicationContext == null) return;
             applicationContext.unregisterReceiver(scoReceiver);
             scoReceiver = null;
         }
+
 
         private AudioAttributesCompat decodeAudioAttributes(Map<?, ?> attributes) {
             AudioAttributesCompat.Builder builder = new AudioAttributesCompat.Builder();
@@ -828,6 +899,7 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
             removeCommunicationDeviceCallback();
             unregisterNoisyReceiver();
             unregisterScoReceiver();
+            unregisterBluetoothReceiver();
             applicationContext = null;
             audioManager = null;
         }

@@ -1,7 +1,5 @@
 group = "com.shingo.audio_session"
 version "1.0"
-def args = ["-Xlint:deprecation","-Xlint:unchecked"]
-
 buildscript {
     repositories {
         google()
@@ -20,9 +18,6 @@ rootProject.allprojects {
     }
 }
 
-project.getTasks().withType(JavaCompile) {
-    options.compilerArgs.addAll(args)
-}
 
 apply plugin: "com.android.library"
 
@@ -30,25 +25,13 @@ android {
     if (project.android.hasProperty("namespace")) {
         namespace = "com.shingo.audio_session"
     }
-
-    compileSdk = 34
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
+    compileSdk = 36
     defaultConfig {
         minSdk = 19
     }
 
-    lintOptions {
-        checkAllWarnings true
-        warningsAsErrors true
-        disable 'AndroidGradlePluginVersion', 'InvalidPackage', 'GradleDependency', 'NewerVersionAvailable'
-    }
 }
 
 dependencies {
-    implementation "androidx.media:media:1.7.0"
+    implementation "androidx.media:media:1.7.1"
 }

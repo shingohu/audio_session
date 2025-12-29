@@ -562,7 +562,7 @@ class AudioDevice {
   final AudioDeviceType type;
 
   ///The mac address of this device
-  ///android>=9 has address
+  ///android>=9 has address by get devices
   ///iOS  use uid,maybe not mac address [https://stackoverflow.com/questions/59501241/how-to-detect-what-bluetooth-device-audio-is-coming-out-of]
   final String? address;
 
