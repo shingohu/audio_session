@@ -825,7 +825,10 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
                 }
             };
             IntentFilter filter = new IntentFilter();
+            //该广播仅表示底层链路连接成功，不代表设备已配对（配对是 ACTION_BOND_STATE_CHANGED 监听的内容）。
+            //已配对的设备可能断开 ACL 连接（如超出距离），重新连接时会触发此广播。
             filter.addAction(BluetoothDevice.ACTION_ACL_CONNECTED);
+            filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
             filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
             ContextCompat.registerReceiver(applicationContext, bluetoothReceiver, filter, ContextCompat.RECEIVER_EXPORTED);
         }
@@ -840,13 +843,15 @@ public class AndroidAudioManager implements MethodCallHandler, ActivityAware {
             }
             Set<BluetoothDevice> bondedDevices = adapter.getBondedDevices();
             for (BluetoothDevice bondedDevice : bondedDevices) {
-                result.add(mapOf(
-                        "address", bondedDevice.getAddress(),
-                        "name", bondedDevice.getName(),
-                        "type", bondedDevice.getType(),
-                        "isConnected", checkBondedBluetoothDeviceConnected(bondedDevice)
+                if (bondedDevice.getBondState() == BluetoothDevice.BOND_BONDED) {
+                    result.add(mapOf(
+                            "address", bondedDevice.getAddress(),
+                            "name", bondedDevice.getName(),
+                            "type", bondedDevice.getType(),
+                            "isConnected", checkBondedBluetoothDeviceConnected(bondedDevice)
 
-                ));
+                    ));
+                }
             }
             return result;
         }
